@@ -1,0 +1,387 @@
+{% extends "base/base.html" %}
+
+{% block content %}
+{% include "virtualnode_menu.html" %}
+
+<!-- DataTables CSS -->
+    <link rel="stylesheet" type="text/css" href="/static/libraries/DataTables-1.10.4/jquery.dataTables.min.css">
+    <link rel="stylesheet" type="text/css" href="/static/css/default.css">
+    
+<!-- DataTables -->
+    <script type="text/javascript" charset="utf8" src="/static/libraries/DataTables-1.10.4/jquery.dataTables.min.js"></script>
+<!-- ozwctrlemul -->
+    <script type="text/javascript" charset="utf8" src="/static/js/zwemulator.wui.js"></script>
+    
+<div class="container">
+    <div class="list-group">
+        {% set listSpecif = [] %}
+        {% for clss in node._cmdsClass %}
+            {% if node.getCmdClassValues(clss.id) |length == 0%}
+                {% do listSpecif.append(clss)%}
+            {% endif %}
+        {% endfor %}
+        <h2 class="list-group-item">
+        Specific node Command Classes
+        <span class="glyphicon glyphicon-hand-down pull-right" id="toggle-specific" aria-hidden="true" data-target="detailSpecific_"></span> 
+        <span class="badge">{{ listSpecif|length }}</span>
+        </h2>
+        {% for clss in listSpecif %}
+                <a class="list-group-item" href="#" onclick="toggleVisible('detailSpecific_{{ clss.GetCommandClassId }}', 'toggle-specific{{ clss.GetCommandClassId }}');return false;">
+               <strong>{{ "0x%.2x"%clss.GetCommandClassId }} -  {{ clss.GetCommandClassName }}</strong>
+                <span class="glyphicon glyphicon-chevron-down pull-right" id="toggle-specific{{ clss.GetCommandClassId }}" aria-hidden="true" data-target="detailSpecific_{{ clss.GetCommandClassId }}"></span> 
+                </a>
+                <div class="panel panel-default center-block" id="detailSpecific_{{ clss.GetCommandClassId }}" style="width: 95%; display: none;" hidden>
+                    <table id="tabSpecific_{{ clss.GetCommandClassId }}" class="table  table-condensed">
+                          <thead class="bghead">
+                            <tr>
+                              <th class="vert-align">Données</th>
+                              <th class="vert-align">Supporté</th>
+                              <th class="vert-align">Version</th>
+                            </tr>
+                          </thead>
+                        <tbody class="bgbody">
+                                <tr>
+                                    <td id="detail{{ clss.id }}">
+                                        {% if clss.instances is iterable %}
+                                            {% for i in clss.instances %}
+                                                {{ clss|renderCmdClssGeneric|safe }}
+                                            {% endfor %}
+                                        {% else %}
+                                            no instance
+                                        {% endif %}
+                                    </td>
+                                    <td class="vert-align" align="center">
+                                        {% if clss.m_getSupported|lower == 'true' %}
+                                            {% set st = "checked=&quot;checked&quot;"%}
+                                        {% else %}
+                                            {% set st='' %}
+                                        {% endif %}
+                                        <input type="checkbox" class="checkbox" id="suppoted-{{ clss.id }}" name="issupported" title="Check to support {{ clss.GetCommandClassName }}" {{ st }} ishandled="true" clssid="{{ clss.id }}">
+                                    </td>
+                                    <td class="vert-align col-md-2">
+                                        <form method="POST" action="" class="form-inline">
+                                            <div class="form-group">
+                                                    <div class="input-group">
+                                                        <input type="text" name="version" id="ver-{{ clss.id }}" class="form-control" value="{{ clss.m_version }}" clssid="{{ clss.id }}">
+                                                        <span class="input-group-addon input-addon-xs"><a id="st-ver-{{ clss.id }}" href="#" class="btn btn-xs btn-info"><span id="stic-ver-{{ clss.id }}" class="glyphicon glyphicon-floppy-saved"></span></a></span>
+                                            </div></div>
+                                        </form>
+                                    </td>
+                                 </tr> 
+                        </tbody>
+                    </table>
+                </div>
+        {% endfor %}
+    </div>
+
+        <div class="container-fluid">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h2>Commandes classes avec valeur</h2>
+                </div>
+                <div class="panel-body">
+                    <table id="tabCmdValue_{{ node.nodeId }}" class="display cell-border" cellspacing="0" width="100%">
+                          <thead>
+                            <tr>
+                              <th>Commande Classe</th>
+                              <th>Instance</th>
+                              <th>Index</th>
+                              <th>Genre</th>
+                              <th>Type</th>
+                              <th>Label</th>
+                              <th>Value</th>
+                              <th>Units</th>
+                              <th>Status</th>
+                            </tr>
+                          </thead>
+                        <tbody>
+                        {% for clss in node._cmdsClass %}
+                            {% set clssValues = node.getCmdClassValues(clss.id) %}
+                            {% if clssValues|length > 0 %}
+                                {% for v in clssValues %}
+                                    <tr>
+                                        <td>{{ clss.GetCommandClassName }}</td>
+                                        <td>{{ v.instance }}</td>
+                                        <td>{{ v.index }}</td>
+                                        <td>{{ v.GetGenre }}</td>
+                                        <td>{{ v.GetType }}</td>
+                                        <td>{{ v.label }}</td>
+                                        <td>{{ v.getVal() }}</td>
+                                        <td>{{ v.units }}</td>
+                                        <td>{"vid": "{{ v.GetId() }}", "readOnly": "{{ v.readOnly }}", "writeOnly": "{{ v._writeOnly }}", "min": "{{ v._min }}", "max": "{{ v._max }}",
+                                                  "canpolled": "True", "polled": "{{ v._pollIntensity != 0 }}", "pollintensity": "{{ v._pollIntensity }}", "help": "{{ v._help }}"}
+                                            </td>
+                                     </tr> 
+                                {% endfor %}
+                            {% endif %}
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        <script type="text/javascript">
+        
+        /* Action which shows and hides div with a id of "Specific command class details" */
+        $("[id^='toggle-specific']").click(function() {
+          var target_selector = $(this).attr('data-target');
+          toggleVisible(target_selector, this.id);
+          return false;
+        });
+        
+        function toggleVisible(target_selector, icon_selector) {
+          var $target = $("[id^='"+target_selector+"']" );
+          if ($target.is(':hidden')) {
+            $target.show("fast" );
+            $('#'+icon_selector).removeClass('glyphicon-chevron-down').addClass('glyphicon-chevron-up');
+          } else {
+            $target.hide( "fast" );
+            $('#'+icon_selector).removeClass('glyphicon-chevron-up').addClass('glyphicon-chevron-down');
+          };
+        };
+        
+        // Enable the Form
+
+        $("input").on('keypress keyup', function (e) {
+            if (e.type == 'keypress') {
+                if (e.which == 13) {
+                var start = this.baseURI.search('virtualnodes/')+13;
+                var end = this.baseURI.search('/cmd_classes');
+                var refNode = this.baseURI.substring(start, end);
+                $.getJSON('/virtualnodes/'+refNode+'/update_clss', {
+                  inputId: this.id,
+                  clssId: $(this).attr('clssid'),
+                  key: this.name,
+                  value: this.value
+                }, function(data, result) {
+                    console.log("Retour de modif :" + JSON.stringify(data));
+                    if (data.result == 'error') {
+                        new PNotify({
+                                type: 'error',
+                                title: 'Invalid input',
+                                text: data.msg,
+                                delay: 6000
+                        });
+                    };
+                    $('#'+data.inputId).val(data.value);
+                    if ($('#st-'+data.inputId).length){  
+                        $('#st-'+data.inputId).removeClass('btn-info').addClass('btn-success');
+                        $('#stic-'+data.inputId).removeClass('glyphicon-refresh glyphicon-floppy-saved').addClass('glyphicon-ok');
+                    };
+                });
+                return false;
+             };
+             } else {
+                if (e.which == 13) {return false};
+                if ($('#st-'+this.id).length){  
+                    $('#st-'+this.id).removeClass('btn-success').addClass('btn-info');
+                    $('#stic-'+this.id).removeClass('glyphicon-ok glyphicon-floppy-saved').addClass('glyphicon-refresh ');
+                };
+            };
+          });
+          
+        $("[name=issupported]").change(function(e){
+            var start = this.baseURI.search('virtualnodes/')+13;
+            var end = this.baseURI.search('/cmd_classes');
+            var refNode = this.baseURI.substring(start, end);
+            $.getJSON('/virtualnodes/'+refNode+'/update_clss', {
+                  inputId: this.id,
+                  clssId: $(this).attr('clssid'),
+                  key: this.name,
+                  value: this.checked
+                }, function(data, result) {
+                    console.log("Retour de modif checkbox:"+JSON.stringify(data));
+                    if (data.result == 'error') {
+                        new PNotify({
+                                type: 'error',
+                                title: 'Invalid input',
+                                text: data.msg,
+                                delay: 4000
+                        });
+                        if (data.value == true) {
+                            $('#st-'+data.inputId).checked = true;
+                        } else  {
+                            $('#st-'+data.inputId).checked = false;
+                        };
+                    };
+                    if ($('#st-'+data.inputId).length){  
+                        $('#st-'+data.inputId).removeClass('btn-info').addClass('btn-success');
+                        $('#stic-'+data.inputId).removeClass('glyphicon-refresh glyphicon-floppy-saved').addClass('glyphicon-ok');
+                    };
+                });
+            });
+          
+        </script>
+        </div>
+      
+</div>
+
+<script type="text/javascript">
+$(document).ready( function () {
+    $("[ref^='mSelect']").multiselect({
+        buttonText: function(options, select) {
+                if (options.length === 0) {
+                    return 'No item selected ...  <b class="caret"></b>';
+                }
+                else if (options.length > 10) {
+                    return 'More than 10 item selected !  <b class="caret"></b>';
+                }
+                 else {
+                     var labels = [];
+                     options.each(function() {
+                        if ($(this).attr('textButton') !== undefined) {
+                             labels.push($(this).attr('textButton'));
+                         }
+                         else {
+                             labels.push($(this).html());
+                         }
+                     });
+                     return labels.join(', ') + ' <b class="caret"></b>';
+                 }
+            },
+        onChange: function(option, checked, select) {
+            var inputId = this.$select.attr('id')
+            if ($('#stic-'+inputId).length){ 
+                $('#st-'+inputId).removeClass('btn-success btn-warning').addClass('btn-info');
+                $('#stic-'+inputId).removeClass('glyphicon-ok glyphicon-floppy-saved glyphicon-remove').addClass('glyphicon-refresh ');
+                
+            }
+        },
+        onDropdownHidden: function(event) {
+            var start = document.baseURI.search('virtualnodes/')+13;
+            var end = document.baseURI.search('/cmd_classes');
+            var refNode = document.baseURI.substring(start, end);
+            $.getJSON('/virtualnodes/'+refNode+'/update_clss', {
+                  inputId: this.$select.attr('id'),
+                  clssId: this.$select.attr('clssid'),
+                  key: this.$select.attr('name'),
+                  value: this.$button[0].textContent
+                }, function(data, result) {
+                    console.log("Retour de modif multiselect:"+JSON.stringify(data));
+                    if (data.result == 'error') {
+                        new PNotify({
+                                type: 'error',
+                                title: 'Invalid input',
+                                text: data.msg,
+                                delay: 4000
+                        });
+                        if ($('#stic-'+data.inputId).length){  
+                            $('#st-'+data.inputId).removeClass('btn-info btn-success').addClass('btn-warning');
+                            $('#stic-'+data.inputId).removeClass('glyphicon-refresh glyphicon-floppy-saved glyphicon-ok').addClass('glyphicon-remove');
+                        };
+                        $("#"+data.inputId).multiselect('deselectAll', false);
+                        $("#"+data.inputId).multiselect('select', data.value);
+                    } else {
+                        if ($('#stic-'+data.inputId).length){  
+                            $('#st-'+data.inputId).removeClass('btn-info btn-warning').addClass('btn-success');
+                            $('#stic-'+data.inputId).removeClass('glyphicon-refresh glyphicon-floppy-saved glyphicon-remove').addClass('glyphicon-ok');
+                        };
+                    };
+                });
+            }
+        });
+    $("[id^='tabCmdValue_']").DataTable( {
+        "paging":   true,
+        "ordering": true,
+        "order": [[ 0, "asc" ]],
+        "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "All"]],
+        "info": true,
+        "columnDefs": [ {
+            "targets": 8,
+            "data": "Extra_State",
+            "render": function (data, type, full, meta) {return renderCmdClssNode(data, type, full, meta);}
+          } ],
+        "drawCallback": function(settings) {
+            var api = this.api();
+            var data = api.rows({page:'current'}).data()
+            vTable = this;
+            $.each(data, function(rowV, vData) {
+                try {
+                    var exData = JSON.parse(vData.Extra_State);
+                    var vId = exData["vid"];
+                    var qPoll = $('#vpoll' + vId);
+                    if (qPoll.attr('isHandled') === undefined) {
+                        qPoll.attr('isHandled',true);
+                        qPoll.click(function(e){
+                            var vId =  this.id.slice(5)
+                            var exData = {}
+                            var datas = api.rows({page:'current'}).data()
+                            var find = false;
+                            for (var i in datas) {
+                                try {
+                                    exData = JSON.parse(datas[i].Extra_State);
+                                    if (exData.vid == vId) {
+                                        var vData = datas[i]
+                                        find = true;
+                                        break };
+                                    }
+                                catch (err) {};
+                                }
+                            if (find) {
+                                var check = "";
+                                if (this.checked) {check = 'checked="checked"'};
+                                bootbox.dialog({
+                                    title: "Set polling value <b>"+vData[5]+"</b>, instance "+vData[1]+", index "+vData[2]+", node {{ node.nodeId }} "+ vData[0],
+                                    message: "<div class='col-md-12'> " +
+                                                "<form class='form-horizontal'> "+
+                                                        "<p> Set if value must be polled and his instensity. Save configuration is necessary to keep change.</p>" +
+                                                    "<div class='form-group'> " +
+                                                        '<div class="checkbox"> <label for="polled"> ' +
+                                                            '<input type="checkbox" name="polled" id="polled" value="polled" '+check+'> Check for polling </label> ' +
+                                                        '</div> ' +
+                                                        '<div class="text"> <label for="pollintensity"> ' +
+                                                        '<input type="text" name="intensity" id="pollintensity" value="'+exData.pollintensity+'"> Intensity </label> ' +
+                                                        '</div> ' +
+                                                        '</div> </div>' +
+                                                "</form> </div>",
+                                    data: {'pData' : exData},
+                                    buttons: [{
+                                        id: 'btn-ok',   
+                                        icon: 'glyphicon glyphicon-check',       
+                                        label: 'OK',
+                                        className: 'btn-primary', 
+                                        autospin: false,
+                                        callback: function(dialogRef){    
+                                        // Submit form
+                                            console.log("Set checkbox value : " + exData.polled + ", intensity :  " + exData.pollintensity);
+                                         //   setPollingValue(vTable, vData[nodeid], values.valueid, values.polled == 'True', values.intensity);
+                                         //   dialogRef.close();
+                                        } 
+                                        }, {
+                                        id: 'btn-cancel',   
+                                        label: 'Cancel',
+                                        className: 'btn-danger', 
+                                        autospin: false,
+                                        callback: function(dialogRef){    
+                                        // Submit form
+                                            console.log("Cancel edit polling : " + exData.polled + ", intensity :  " + exData.pollintensity);
+                                         //   setPollingValue(vTable, vData[nodeid], values.valueid, values.polled == 'True', values.intensity);
+                                          //  dialogRef.close();
+                                        }
+                                   // button: "#poll" + vId,
+                                   // data: {polled: $('#poll' + vId).is(':checked'), intensity : intensity, valueid: vId},
+                                    }]
+                                });
+                             //   $('#valueid').hide();
+                               // $('#tipsSetPollt').html("<br>" + getValueTabCmdClass(vTable, vData, 'commandClass') + " -> " + getValueTabCmdClass(vTable, vData, 'label'));
+                               // $('#intensity').val(intensity);
+                             /*   if ($('#vpoll' + vId).is(':checked')) {
+                                    $('#vpoll' + vId).removeAttr('checked');
+                                    $('#polled').removeAttr('checked');
+                                } else {
+                                    $('#vpoll' + vId).attr('checked', 'checked');
+                                    $('#vpolled').attr('checked', 'checked');
+                                };*/
+                                console.log("click checkbox value : " + this.id + "  " + vId);
+                                };
+                                }); 
+                        };
+                    }
+                    catch (err) {
+                        console.log(err);
+                    };                            
+                });
+            }
+        });
+} );
+</script>
+{% endblock %}

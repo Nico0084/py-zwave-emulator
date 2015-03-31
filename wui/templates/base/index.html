@@ -1,0 +1,25 @@
+{% extends "base/base.html" %}
+
+{% block content %}
+<div class="container">
+  <h1>Bienvenue dans l'emulateur Z-Wave</h1>
+  <p>Vous trouverez une documentation en ligne ici  : 
+    <a href="http://docs.domogik.org/">http://docs.domogik.org/</a>.</p>
+  <p>Pour démarrer l'emulateur vous devez :</p>
+  <ul>
+    <li>Installer les dépendances (socat).</li>
+    <li>Configurer l'émulateur.</li>
+    <li>Créer ou récupérer un fichier de configartion xml d' openzwave.</li>
+    <li>Configurer le comportement des modules zwave.</li>
+    <li>C'est fini, amusez-vous !</li>
+  </ul>
+    <p>Le Controlleur est : {{ managerStatus }}.<p>    
+</div>
+
+<script type="text/javascript">
+  $( document ).ready(function() {
+    // Rien pour l'instant
+    
+  });
+</script>
+{% endblock %}

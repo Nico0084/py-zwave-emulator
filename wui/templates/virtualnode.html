@@ -1,0 +1,63 @@
+{% extends "base/base.html" %}
+
+{% block content %}
+{% include "virtualnode_menu.html" %}
+
+<div class="container">
+ <div class="row">
+    <div class="col-md-6">
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <h2>Matériel</h2>
+        </div>
+        <div class="panel-body">
+          <h3>Fabriquant</h3>
+          <ul>
+            <li>id : <b>{{ node.GetManufacturerId }}</b></li>
+            <li>Nom : <b>{{ node.GetManufacturerName }}</b></li>
+          </ul>
+          <h3>Produit</h3>
+          <ul>
+            <li>id : <b>{{ node.GetProductId }}</b>, type <b>{{ node.GetProductType }}</b></li>
+            <li>Nom : <b>{{ node.GetProductName }}</b></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <h2>Status du noeud</h2>
+        </div>
+        <div class="panel-body">
+            {% if node.IsAwake() %}
+                {% set statusWakup = "alive" %}
+                {% set txtWakup = "Réveillé" %}
+            {% else %} 
+                {% set statusWakup = "sleep" %}
+                {% set txtWakup = "En sommeil" %}
+            {% endif %}
+          <h3>Informations
+                <span id="node-awake" class="label label-info status status-label status-{{statusWakup}} pull-right">{{txtWakup}}</span>
+          </h3>
+          <ul>
+                <li>Version : <b>{{ node.version}}</b> </li>
+                <li>Max Baud Rate : <b>{{ node.max_baud_rate}}</b> </li>
+                <li>Controlleur : <b>{{ node.IsController()}}</b> </li>
+                <li>Type : <b>{{ node.typeNode }}</b> </li>
+                <li>Fonctionalités : <b>{{ node.GetCapabilities()}}</b> </li>
+                <ul>
+                    {% for dClass in node.GetDeviceClasses() %}
+                        <li><b>{{ dClass }}</b> </li>
+                    {% endfor %}
+                </ul>
+                <li>Noeuds voisins : <b>{{ node.neighbors}}</b> </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

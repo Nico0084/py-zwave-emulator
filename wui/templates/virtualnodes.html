@@ -1,0 +1,70 @@
+{% extends "base/base.html" %}
+
+{% block content %}
+<div class="container">
+
+
+    <button type="button" id="install_a_plugin" class="btn btn-primary" data-toggle="modal" data-target="#create_node">
+      <span class='glyphicon glyphicon-download-alt' aria-hidden='true'></span>Créer un Noeud
+    </button>
+    
+    <!-- Modal -->
+    <div class="modal fade" id="create_node" tabindex="-1" role="dialog" aria-labelledby="createnodelInstructions" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            <h4 class="modal-title" id="myModalLabel">Comment créer un noeud zwave</h4>
+          </div>
+          <div class="modal-body">
+            <p>In the current release, you can't install plugins directly from this administration interface..</p>
+            <p>You will have to install a plugin from a command line, thanks to the command :</p>
+            <pre>dmg_install --install http://somewhere.com/aplugin.zip</pre>
+            <p>You will be able to find the plugins in the Domogik packages online repository : </p>
+            <a href="http://repo-public.domogik.org/">http://repo-public.domogik.org/</a>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" data-dismiss="modal">OK</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    {% if listdrivers|length > 0 %}
+      {% for driver in listdrivers %}
+        <h1>Réseaux sur le HomeID {{ manager.matchHomeID(driver.homeId) }} (Port série : {{ driver.serialport }})</h1>
+            <div class="list-group">
+                <h2 class="list-group-item">
+                Liste des noeuds
+                <span class="badge">{{ listnodes|length }}</span>
+                </h2>
+                {% for node in listnodes %}
+                    {% if node.homeId ==  driver.homeId %}
+                        {% if node.name %}
+                            {% set extraTxt = "%s -- "%node.name %}
+                        {% else %}
+                            {%set extraTxt = "" %}
+                        {% endif %}
+                        <a class="list-group-item" href="/virtualnodes/{{ manager.matchHomeID(driver.homeId) }}.{{ node.nodeId }}">
+                        <span class='glyphicon glyphicon-chevron-right' aria-hidden='true'></span> 
+                        {{ node.nodeId }} -  {{ extraTxt }} {{ node.GetProductName }}
+                        <span class="label label-info status status-label status-alive pull-right">initialisé</span>
+                        </a>
+                    {% endif %}
+                {% endfor %}
+            </div>
+      {% endfor %}
+
+    {% else %}
+        <div class="alert alert-warning">Pas de driver pour réseaux zwave trouvé, verifier le manager.</div>
+    {% endif %}
+</div>
+
+
+<script type="text/javascript">
+  $( document ).ready(function() {
+    // Rien pour l'instant
+  });
+</script>
+{% endblock %}

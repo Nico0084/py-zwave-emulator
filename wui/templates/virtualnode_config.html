@@ -1,0 +1,306 @@
+{% extends "base/base.html" %}
+
+{% block content %}
+{% include "virtualnode_menu.html" %}
+
+<!-- CSS -->
+    <link rel="stylesheet" type="text/css" href="/static/css/default.css">
+    
+<!-- ozwctrlemul -->
+    <script type="text/javascript" charset="utf8" src="/static/js/zwemulator.wui.js"></script>
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-6">
+          <div class="panel panel-default">
+            <div class="panel-heading">
+              <h2>General emulation parameters</h2>
+            </div>
+            <div class="panel-body">
+              <h3>Status</h3>
+              <ul>
+                <li>Comment : <b>{{ node.emulData['comment'] }}</b></li>
+                <li>Mark as fail : <b>{{ node.IsFailed }}</b></li>
+              </ul>
+              <h3>Wake up / Sleeping</h3>
+              <ul>
+                <li>Wake up every : <b>{{ node.emulData['timeoutwakeup'] }} s</b></li>
+                <li>Wake up during : <b>{{ node.emulData['wakeupduration'] }} s</b></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-12">
+        {% set listClss = [] %}
+        {% for clss in node._cmdsClass %}
+            {% if node.getCmdClassValues(clss.id) |length != 0%}
+                {% do listClss.append(clss)%}
+            {% endif %}
+        {% endfor %}
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h2>Commands classes polled
+                      <a id="create-device" class="btn btn-info" href="/virtualnodes/{{ node_ref }}/create_poll"><span class='glyphicon glyphicon-plus' aria-hidden='true'></span> Create a new polled value</a> 
+                    <span class="glyphicon glyphicon-hand-down pull-right" id="toggle-specific" aria-hidden="true" data-target="detailSpecific_"></span> 
+                    <span class="badge pull-right">{{ node.emulData['pollingvalues']|length }}</span>
+                </h2>
+            </div>
+                <div class="list-group">
+                {% for vPoll in  node.emulData['pollingvalues'] %}
+                    {% set clssSelect = [] %}
+                    <li class="list-group-item" name = "vPoll" idPoll={{ vPoll['id'] }}>
+                        <div class="row">
+                            <div class="col-md-5">
+                                {% set clss = node.getCmdClassByName(vPoll['cmdclass']) %}
+                                <H4>{{ "0x%.2x"%clss.GetCommandClassId }} - {{ clss.GetCommandClassName }}</H4>
+                            </div> 
+                            <div class="col-md-4">
+                                {% set clssValues = node.getCmdClassValues(clss.GetCommandClassId) %}
+                                {% if clssValues|length > 0 %}
+                                    {% for v in clssValues %}
+                                        {% if  (v.instance == vPoll['instance']) and ( v.label == vPoll['label'])%}
+                                            <H4>{{ v.label }} ({{ v.units}}) - index {{ v.index }} - instance <b>{{ v.instance }}</b></H4>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                    <H4>Pas de valeur selectionnee</H4>
+                                {% endif %}
+                            </div> 
+                            <div class="col-md-3">
+                                <a class="btn btn-default" href="/virtualnodes/{{ node_ref }}/edit_poll"><span class='glyphicon glyphicon-pencil' aria-hidden='true'></span> Edit</a> 
+                                <a class="btn btn-default" data-toggle="confirmation" data-placement="bottom" data-href="/virtualnodes/{{ node_ref }}/delete_poll/{{ vPoll['id'] }}">
+                                    <span class="glyphicon glyphicon-trash" aria-hidden="true"></span> Delete the poll</a>
+                            </div> 
+                        </div>
+                        <div class="row">
+                            <div class="form-inline" id="form_P-{{ vPoll['id'] }}">
+                                <script type="text/javascript">
+                                document.write(renderInputText("timing_P-{{ vPoll['id'] }}", 'Time repeat', {{ vPoll['timing'] }}, "col-md-4", "col-md-5", "col-md-7"))
+                          </script>
+                                <div class="col-md-1">
+                                {% set pollStatus = [] %}
+                                {% if vPoll['unable'] %}
+                                    {% do pollStatus.append('alive') %}
+                                    {% do pollStatus.append('Unable') %}
+                                {% else %}
+                                    {% do pollStatus.append('stopped') %}
+                                    {% do pollStatus.append('Disable') %}
+                                {% endif %}
+                                    <div class="btn-group" id="st_P-{{  vPoll['id'] }}">
+                                          <button id="status_P-{{ vPoll['id'] }}" type="button" class="btn btn-info btn-xs dropdown-toggle status-label status-{{ pollStatus[0] }}" data-toggle="dropdown" aria-expanded="false">
+                                            <span class="status">{{ pollStatus[1] }}</span> <span class="caret"></span>
+                                          </button>
+                                          <ul class="dropdown-menu" role="menu">
+                                            <li><a id="unable-{{ vPoll['id'] }}" href="#" idPoll={{ vPoll['id'] }}>Unable</a></li>
+                                            <li><a id="disable-{{ vPoll['id'] }}" href="#" idPoll={{ vPoll['id'] }}>Disable</a></li>
+                                          </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-5">
+                                <label for="poll_type-{{ vPoll['id'] }}">Type of poll : </label>
+                                {% if vPoll['params']['polltype'] == 'rangeNumber' %}
+                                    <span id="poll_type-{{ vPoll['id'] }}">Range between min max</span>
+                                {% elif vPoll['params']['polltype'] == 'serie' %}
+                                    <span id="poll_type-{{ vPoll['id'] }}">Serie of values</span>
+                                {% elif vPoll['params']['polltype'] == 'collection' %}
+                                    <span id="poll_type-{{ vPoll['id'] }}">Collection of values</span>
+                                {% else %}
+                                    <span id="poll_type-{{ vPoll['id'] }}">Not selected</span>
+                               {% endif %}
+                            <br>
+                                <label for="poll_mode-{{ vPoll['id'] }}">Mode : </label>
+                                {% if vPoll['params']['mode'] == 'random' %}
+                                    <span id="poll_mode-{{ vPoll['id'] }}">Randomize</span>
+                                {% elif vPoll['params']['mode'] == 'round' %}
+                                    <span id="poll_mode-{{ vPoll['id'] }}">Course value and restart from first</span>
+                                {% elif vPoll['params']['mode'] == 'roundtrip' %}
+                                    <span id="poll_mode-{{ vPoll['id'] }}">Course value with return course</span>
+                                {% elif vPoll['params']['mode'] == 'incremental' %}
+                                    <span id="poll_mode-{{ vPoll['id'] }}">Increment</span>
+                                {% else %}
+                                    <span id="poll_mode-{{ vPoll['id'] }}">Not selected</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="panel-heading">
+                                <h4>Parameters</h4>
+                            </div>
+                            <div class="panel panel-default">
+                                <div class="panel-body">
+                                    <div class="form-group" id="form_type-{{ vPoll['id'] }}">
+                                    </div>
+                                    <script type="text/javascript">
+                                document.write(renderInputText("params_P-{{ vPoll['id'] }}", 'Parameters', "{{ vPoll['params'] }}", "col-md-5", "col-md-5", "col-md-7"));
+                            </script>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                {% endfor %}
+                </div>
+        </div>
+        </div>
+    </div>
+
+</div> 
+
+ <script type="text/javascript">
+    $( document ).ready(function() {
+        // Build Form poll params
+        $("[id^='form_type-']").each(function() {
+            var valueType = '';
+            var idPoll = getAttrInherit(this, 'idPoll');
+            $.getJSON('/virtualnodes/{{ node_ref }}/'+idPoll+'/get_poll', {
+                }, function(data, result) {
+                    console.log("Retour de get poll detail :" + JSON.stringify(data));
+                    if (data.result == 'success') {
+                        switch (data.vpoll['params']['polltype']) {
+                            case "rangeNumber" :
+                                $("#form_type-"+data.vpoll['id']).replaceWith(renderMinMaxForm("form_type-"+data.vpoll['id'], data.valueparams['type'], data.vpoll['params']['values']['max'], data.vpoll['params']['values']['min']));
+                                break;
+                            case "serie" :
+                                $("#form_type-"+data.vpoll['id']).replaceWith(renderSerieForm("form_type-"+data.vpoll['id'], data.valueparams['type'], data.vpoll['params']['values'], data.valueparams['listVal']));
+                                activateFormSerieType();
+                                break;
+                            default :
+                                $("#form_type-"+data.vpoll['id']).replaceWith('<div class="form-group" id="form_type"></div>');
+                        };
+                    };
+                    activateFormType();
+                }
+            );
+        });
+    
+        // Enable the Form
+        $("[id^='unable-'], [id^='disable-']").click(function() {
+            console.log("start request unable");
+            var start = this.baseURI.search('virtualnodes/')+13;
+            var end = this.baseURI.search('/config');
+            var refNode = this.baseURI.substring(start, end);
+//            var idPoll = $(this).attr('idPoll');
+            var idPoll = parseInt(getAttrInherit(this, 'idPoll'));
+            $.getJSON('/virtualnodes/'+refNode+'/update_config_poll', {
+                  inputId: this.id,
+                  key: this.id,
+                  idPoll: idPoll,
+                  value: ""
+                }, function(data, result) {
+                    console.log("Retour de modif :" + JSON.stringify(data));
+                    if (data.result == 'error') {
+                        new PNotify({
+                                type: 'error',
+                                title: 'Invalid input',
+                                text: data.msg,
+                                delay: 6000
+                        });
+                    };
+                    if (data.value == 'start'){  
+                        $('#status_P-'+data.idPoll).removeClass('status-stopped').addClass('status-alive');
+                        $('#status_P-'+data.idPoll).children(".status").text('Unable');
+                    } else {
+                        $('#status_P-'+data.idPoll).removeClass('status-alive').addClass('status-stopped');
+                        $('#status_P-'+data.idPoll).children(".status").text('Disable');
+                    };
+                });
+            });
+
+        $("input").on('keypress keyup', function (e) {
+            if (e.type == 'keypress') {
+                if (e.which == 13) {
+                console.log("start request update config");
+                var start = this.baseURI.search('virtualnodes/')+13;
+                var end = this.baseURI.search('/config');
+                var refNode = this.baseURI.substring(start, end);
+                start = this.id.search('_P-')+3;
+                var idPoll = parseInt(getAttrInherit(this, 'idPoll'));
+                updateConfigPoll(refNode, idPoll, this.id, this.name, this.value)
+                return false;
+             };
+             } else {
+                if (e.which == 13) {return false};
+                if ($('#st-'+this.id).length){  
+                    $('#st-'+this.id).removeClass('btn-success').addClass('btn-info');
+                    $('#stic-'+this.id).removeClass('glyphicon-ok glyphicon-floppy-saved').addClass('glyphicon-refresh ');
+                };
+            };
+          });
+          
+        $("[id^='clss_P-'], [id^='clss_lab_P-']").change(function() {
+            handleChangeCmdClssPolled(this);
+        });
+        
+        function activateFormSerieType() {
+            $("[name*='del_value']").unbind( "click");
+            $("[name*='del_value']").click(function() {
+                var idPoll = getAttrInherit(this, 'idPoll');
+                var id = parseInt($(this).attr('valId')) -1;
+                $.getJSON('/virtualnodes/{{ node_ref }}/'+idPoll+'/get_poll', {
+                    }, function(data, result) {
+                        console.log("Retour de get poll detail :" + JSON.stringify(data));
+                        if (data.result == 'success') {
+                            data.vpoll.params.values.splice(id, 1);
+                            updateConfigPoll("{{ node_ref }}", idPoll, this.name, 'params', 'values', JSON.stringify(data.vpoll.params.values))
+                            $('#form_type-'+idPoll).replaceWith(renderSerieForm('#form_type-'+idPoll, data.valueparams.type, data.vpoll.params.values, data.valueparams.listVal));
+                            activateFormType();
+                            activateFormSerieType();
+                        };
+                    }
+                );
+            });
+            $("#add_val_serie").unbind( "click");
+            $("#add_val_serie").click(function() {
+                var idPoll = getAttrInherit(this, 'idPoll');
+                var id = parseInt($(this).attr('valId')) -1;
+                $.getJSON('/virtualnodes/{{ node_ref }}/'+idPoll+'/get_poll', {
+                    }, function(data, result) {
+                        console.log("Retour de get poll detail :" + JSON.stringify(data));
+                        if (data.result == 'success') {
+                            if (data.valueparams.type != "") {
+                                data.vpoll.params.values.push(null);
+                            } else {
+                                data.vpoll.params.values.push('Value type unrecognized');
+                            };
+                            $('#form_type-'+idPoll).replaceWith(renderSerieForm('#form_type-'+idPoll, data.valueparams.type, data.vpoll.params.values, data.valueparams.listVal));
+                            updateConfigPoll("{{ node_ref }}", idPoll, this.name, 'params', 'values', JSON.stringify(data.vpoll.params.values))
+                            activateFormType();
+                            activateFormSerieType();
+                        };
+                    }
+                );
+            });
+        };
+        function activateFormType() {
+            $("[id^='form_type-']").unbind("change");
+            $("[id^='form_type-']").change(function () {
+                var idPoll = getAttrInherit(this, 'idPoll');
+                console.log("list value change");
+                $.getJSON('/virtualnodes/{{ node_ref }}/'+idPoll+'/get_poll', {
+                    }, function(data, result) {
+                        console.log("Retour de get poll detail :" + JSON.stringify(data));
+                        if (data.result == 'success') {
+                            switch (data.vpoll.params.polltype) {
+                                case "rangeNumber" :
+                                    values = parseValuesFromType(data.valueparams.type, [$("#min").val(),$("#max").val()]);
+                                    break;
+                                case "serie" :
+                                    var dValues = [];
+                                    var datas = $('#form_type-'+idPoll+' [id^="v-"]')
+                                    for (i=0; i < datas.length; i++) {
+                                        dValues.push(datas[i].value);
+                                    };
+                                    values = parseValuesFromType(data.valueparams.type, dValues);
+                            };
+                        updateConfigPoll("{{ node_ref }}", idPoll, this.name, 'params', 'values', JSON.stringify(values))
+                        };
+                    }
+                );
+            });
+        };
+    });
+  </script>
+{% endblock %}

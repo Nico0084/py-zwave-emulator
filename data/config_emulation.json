@@ -1,0 +1,225 @@
+{
+    "controller" : {
+        "zwversion" : "Z-Wave 2.78",
+        "serialapiversion" : [3, 7],
+        "rfchipversion" : [3, 1],
+        "fakeneighbors" : {
+            "1" : [7, 10, 13, 14, 20, 21],
+            "4" : [], 
+            "6" : [7, 10, 11, 13, 14], 
+            "7" : [1, 6, 8, 9, 11, 13, 18, 19, 20, 21],
+            "8" : [7], 
+            "9" : [], 
+            "10" : [1, 6, 11, 13, 14, 18, 19, 20, 21], 
+            "11" : [6, 7, 10, 13, 14, 18, 19], 
+            "13" : [1, 6, 7, 10, 11, 14, 18, 19], 
+            "14" : [1, 6, 10, 11, 13, 18, 19],
+            "18" : [7, 10, 11, 13, 14], 
+            "19" : [], 
+            "20" : [1, 7, 10, 21], 
+            "21" : [1, 7, 10, 20]
+            }
+        },
+    "nodes" : [
+        {
+            "nodeid" : 1,
+            "comment" : "controller",
+            "failed" : false,
+            "timeoutwakeup" : 0,
+            "wakeupduration" : 0,
+            "pollingvalues" : []
+        },{
+            "nodeid" : 4,
+            "comment" : "KFOB",
+            "failed" : false,
+            "timeoutwakeup" : 110,
+            "wakeupduration" : 15,
+            "pollingvalues" : []
+        },{
+            "nodeid" : 6,
+            "comment" : "HSM02 - 1",
+            "failed" : false,
+            "timeoutwakeup" : 60,
+            "wakeupduration" : 5,
+            "pollingvalues" : []
+        },{
+            "nodeid" : 7,
+            "comment" : "Home Energy Meter",
+            "failed" : false,
+            "timeoutwakeup" : 0,
+            "wakeupduration" : 0,
+            "pollingvalues" : [ 
+                    {
+                        "cmdclass" : "COMMAND_CLASS_METER",
+                        "instance" : 1,
+						"label" : "Power",
+                        "timing" : 20,
+                        "params" : {
+                            "polltype": "rangeNumber",
+                            "mode" : "random",
+                            "values" : {"min": 0, "max": 2000},
+                            "step" : 0
+                            },
+                        "unable" : true
+                    },{
+                        "cmdclass" : "COMMAND_CLASS_METER",
+                        "instance" : 2,
+						"label" : "Power",
+                        "timing" : 120,
+                        "params" : {
+                            "polltype": "rangeNumber",
+                            "mode" : "random",
+                            "values" : {"min": 0, "max": 2000},
+                            "step" : 0
+                            },
+                        "unable" : true
+                    },{
+                        "cmdclass" : "COMMAND_CLASS_METER",
+                        "instance" : 3,
+						"label" : "Energy",
+                        "timing" : 120,
+                        "params" : {
+                            "polltype": "rangeNumber",
+                            "mode" : "random",
+                            "values" : {"min": 0, "max": 2000},
+                            "step" : 0
+                            },
+                        "unable" : true
+                    },{
+                        "cmdclass" : "COMMAND_CLASS_METER",
+                        "instance" : 4,
+						"label" : "",
+                        "timing" : 120,
+                        "params" : {
+                            "polltype": "rangeNumber",
+                            "mode" : "random",
+                            "values" : {"min": 0, "max": 2000},
+                            "step" : 0
+                            },
+                        "unable" : false
+                    }
+                ]
+        },{
+            "nodeid" : 8,
+            "comment" : "Infrared detector",
+            "failed" : false,
+            "timeoutwakeup" : 140,
+            "wakeupduration" : 15,
+            "pollingvalues" : [ 
+                    {
+                        "cmdclass" : "COMMAND_CLASS_SENSOR_MULTILEVEL",
+                        "instance" : 1,
+						"label" : "General",
+                        "timing" : 180,
+                        "params" : {
+                            "polltype": "rangeNumber",
+                            "mode" : "random",
+                            "values" : {"min": 0, "max": 255},
+                            "step" : 0
+                            },
+                        "unable" : true
+                    },{
+                        "cmdclass" : "COMMAND_CLASS_SENSOR_MULTILEVEL",
+                        "instance" : 2,
+						"label" : "Luminance",
+                        "timing" : 180,
+                        "params" : {
+                            "polltype": "rangeNumber",
+                            "mode" : "random",
+                            "values" : {"min": 0, "max": 180},
+                            "step" : 0
+                            },
+                        "unable" : true
+                    },{
+                        "cmdclass" : "COMMAND_CLASS_SENSOR_MULTILEVEL",
+                        "instance" : 3,
+						"label" : "Temperature",
+                        "timing" : 180,
+                        "params" : {
+                            "polltype": "rangeNumber",
+                            "mode" : "random",
+                            "values" : {"min": 20, "max": 90},
+                            "step" : 0
+                            },
+                        "unable" : true
+                    }                    
+                ]
+        },{
+            "nodeid" : 9,
+            "comment" : "HSM02 - 2",
+            "failed" : false,
+            "timeoutwakeup" : 170,
+            "wakeupduration" : 5,
+            "pollingvalues" : []
+        },{
+            "nodeid" : 10,
+            "comment" : "FGS211 Switch - Kitchen",
+            "failed" : false,
+            "timeoutwakeup" : 0,
+            "wakeupduration" : 0,
+            "pollingvalues" : [{
+                        "cmdclass" : "COMMAND_CLASS_SWITCH_ALL",
+                        "instance" : 1,
+						"label" : "Switch All",
+                        "timing" : 60,
+                        "params" : {
+                            "polltype": "serie",
+                            "mode" : "round",
+                            "values" : [0,1,2],
+                            "step" : 0
+                            },
+                        "unable" : false
+                    }
+                ]
+        },{
+            "nodeid" : 11,
+            "comment" : "FGS221 Double Switch - 1",
+            "failed" : false,
+            "timeoutwakeup" : 0,
+            "wakeupduration" : 0,
+            "pollingvalues" : []
+        },{
+            "nodeid" : 13,
+            "comment" : "AN158 Plug-in Meter Switch",
+            "failed" : false,
+            "timeoutwakeup" : 0,
+            "wakeupduration" : 0,
+            "pollingvalues" : []
+        },{
+            "nodeid" : 14,
+            "comment" : "FGWPE Wall Plug",
+            "failed" : false,
+            "timeoutwakeup" : 0,
+            "wakeupduration" : 0,
+            "pollingvalues" : []
+        },{
+            "nodeid" : 18,
+            "comment" : "ST814 Temperature and Humidity Sensor",
+            "failed" : false,
+            "timeoutwakeup" : 120,
+            "wakeupduration" : 10,
+            "pollingvalues" : []
+        },{
+            "nodeid" : 19,
+            "comment" : "SF812 Smoke Alarm",
+            "failed" : false,
+            "timeoutwakeup" : 100,
+            "wakeupduration" : 5,
+            "pollingvalues" : []
+        },{
+            "nodeid" : 20,
+            "comment" : "FGS221 Double Relay Switch - 2",
+            "failed" : false,
+            "timeoutwakeup" : 0,
+            "wakeupduration" : 0,
+            "pollingvalues" : []
+        },{
+            "nodeid" : 21,
+            "comment" : "FGS211 Switch - pool",
+            "failed" : true,
+            "timeoutwakeup" : 0,
+            "wakeupduration" : 0,
+            "pollingvalues" : []
+        }
+    ]
+}

@@ -1,0 +1,33 @@
+<nav class="navbar navbar-zwemul navbar-static-top" role="navigation">
+  <div class="container-fluid">
+    <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#menu-navbar-collapse-1">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="/" id="admin">Configuration</a>
+    </div>
+
+    <!-- Collect the nav links, forms, and other content for toggling -->
+    <div class="collapse navbar-collapse" id="menu-navbar-collapse-1">
+      <ul class="nav navbar-nav">
+        <li{% if mactive == "virtualnodes" %} class="active" {% endif %} id="virtualnodes"><a href="/virtualnodes">Noeuds virtuels</a></li>
+        <li{% if mactive == "ctrlnodes" %} class="active" {% endif %} id="ctrlnodes"><a href="/ctrlnodes">contrôle des noeuds</a></li>
+        <li class="dropdown{% if mactive == "auth" %} active{% endif %}" id="auth">
+          <a href="#" class="dropdown-toggle" data-toggle="dropdown">Auth<b class="caret"></b></a>
+          <ul class="dropdown-menu">
+            <li><a href="/accounts">Accounts</a></li>
+            <li><a href="/persons">Persons</a></li>
+          </ul>
+        </li>
+        <li{% if mactive == "logdebug" %} class="active" {% endif %} id="logdebug"><a href="/logdebug">log debug</a></li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        <li><a href="/logout">Logout</a></li>
+      </ul>
+    </div><!-- /.navbar-collapse -->
+  </div><!-- /.container-fluid -->
+</nav>

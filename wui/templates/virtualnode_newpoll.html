@@ -1,0 +1,295 @@
+{% extends "base/base.html" %}
+
+{% block content %}
+{% include "virtualnode_menu.html" %}
+
+<!-- CSS -->
+    <link rel="stylesheet" type="text/css" href="/static/css/default.css">
+    
+<!-- ozwctrlemul -->
+    <script type="text/javascript" charset="utf8" src="/static/js/zwemulator.wui.js"></script>
+
+<div class="container">
+    {% set listClss = [] %}
+    {% for clss in node._cmdsClass %}
+        {% if node.getCmdClassValues(clss.id) |length != 0%}
+            {% do listClss.append(clss)%}
+        {% endif %}
+    {% endfor %}
+    <h2>Create a polled value</h2>
+    <form role="form">
+    <div class="row">
+        <div class="col-md-7">
+            <div class="form-group">
+                <label for="clss_polled">Select Command class to poll</label>
+                <select class="form-control" id="clss_polled">
+                    <option value="">No selection</option>
+                    {% for clss in listClss %}
+                        <option value="{{ clss.GetCommandClassId }}">{{ "0x%.2x"%clss.GetCommandClassId }} - {{ clss.GetCommandClassName }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="form-group">
+                <label for="timing">Set time repeat (s)</label>
+                <input type="text" id="timing" class="form-control" value="">
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="form-group">
+                <label for="clss_lab_polled">Select label from command class</label>
+                <select class="form-control" id="clss_lab_polled">
+                    <option value="">No selection</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-md-3">
+           <div class="form-group">
+                <label for="instances">Select instance from command class</label>
+                <select class="form-control" id="instances">
+                    <option value=0>No selection</option>
+                    <option value=1>1</option>
+                </select>
+            </div>
+            </div>
+        <div class="vert-align col-md-4">
+            <label for="type_val">Type :</label>
+            <span id="type_val" valueType="">Select label and instance<span>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-3">
+           <div class="form-group">
+                <label for="poll_type">Select a type of poll</label>
+                <select class="form-control" id="poll_type">
+                    <option value="">No selection</option>
+                    <option value="rangeNumber">Range between min max</option>
+                    <option value="serie">Serie of values</option>
+                    <option value= "collection">Collection of values</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-md-3">
+           <div class="form-group">
+                <label for="poll_mode">Select mode</label>
+                <select class="form-control" id="poll_mode">
+                    <option value="">No selection</option>
+                    <option value="random">Randomize</option>
+                    <option value="round">Course value and restart from first</option>
+                    <option value="roundtrip">Course value with return course</option>
+                    <option value="incremental">Increment</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-md-1">
+            <div class="btn-group center-block" id="poll_status">
+                  <button id="status" type="button" class="btn btn-info btn-xs dropdown-toggle status-label status-stopped" data-toggle="dropdown" aria-expanded="false">
+                    <span class="status">Disable</span> <span class="caret"></span>
+                  </button>
+                  <ul class="dropdown-menu" role="menu">
+                    <li><a id="unable" href="#">Unable</a></li>
+                    <li><a id="disable" href="#">Disable</a></li>
+                  </ul>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="tab-content">
+            <div class="form-group" id="form_type">
+            </div>
+        </div>
+    </div>
+    <button type="button" class="btn btn-default" id="create_poll">Create</button>
+    </form>
+</div>
+
+ <script type="text/javascript">
+    $( document ).ready(function() {
+        var clssId = 0;
+        var instance = 0;
+        var label = "";
+        var valueType = "";
+        var typePoll = "";
+        var listVal = [];
+        var values = [];
+        var step = 0;
+        
+        // Enable the Form
+        $("#clss_polled, #instances, #clss_lab_polled").change(function() {
+            clssId = $("#clss_polled")[0].value;
+            instance = $("#instances")[0].value;
+            label = $("#clss_lab_polled").val();
+            $("#clss_lab_polled option:gt(0)").remove(); // remove all options, but not the first
+            $("#instances option:gt(0)").remove(); // remove all options, but not the first
+            $.getJSON('/virtualnodes/{{ node_ref }}/'+$("#clss_polled")[0].value+'/get_label', {
+                instance: instance,
+                label: label
+            }, function(data, result) {
+                console.log("Retour de data :" + JSON.stringify(data));
+                label = "";
+                if (data.result == 'success') {
+                    for (var i= 0; i < data.labels.length; i++) {
+                        $("#clss_lab_polled").append($("<option></option>").attr("value", data.labels[i]['label']).text(data.labels[i]['index'] +" - " + data.labels[i]['label']+"  ("+ data.labels[i]['units']+")"+" - instance : " + data.labels[i]['instance']));
+                        if ((data.label != "") && (data.label == data.labels[i]['label'])) {
+                            label = data.label;
+                        };
+                    };
+                    for (var i=0; i < data.instances.length; i++) {
+                        $("#instances").append($("<option></option>").attr("value", data.instances[i]).text(data.instances[i]));
+                    };
+                    oldlistVal = listVal;
+                    oldvalueType = valueType;
+                    listVal= [];
+                    $("#poll_type option[value!='']").attr('disabled', 'disabled');
+                    if (label != "") {
+                        $("#clss_lab_polled").val(label);
+                        for  (var i= 0; i < data.labels.length; i++) {
+                            if (data.label == data.labels[i]['label']) {
+                                $("#type_val").text(data.labels[i]['type'] + " (" + data.labels[i]['genre'] + ")");
+                                $("#type_val").attr("valueType", data.labels[i]['type']);
+                                listVal = data.labels[i]['listVal'];
+                                valueType = data.labels[i]['type'];
+                                switch (valueType) {
+                                    case "Bool" :
+                                    case "Button" :
+                                        $("#poll_type option[value=serie]").removeAttr("disabled");
+                                        break
+                                    case "List" : 
+                                    case "String" :
+                                        $("#poll_type option[value=serie]").removeAttr("disabled");
+                                        $("#poll_type option[value=collection]").removeAttr("disabled");
+                                        break
+                                    case "Byte":
+                                    case "Decimal":
+                                    case "Int":
+                                    case "Short":
+                                    case "Schedule":
+                                    case "Raw":
+                                        $("#poll_type option[value=rangeNumber]").removeAttr("disabled");
+                                        $("#poll_type option[value=serie]").removeAttr("disabled");
+                                        $("#poll_type option[value=collection]").removeAttr("disabled");
+                                        break;
+                                };
+                            };
+                        };
+                        if (oldvalueType != valueType) {
+                            $('#form_type').replaceWith('<div class="form-group" id="form_type"></div>');
+                            $("#poll_type option[value='']").attr("selected", "selected");
+                        } else if ( !oldlistVal.equals(listVal)) {
+                            $("#poll_type").change();
+                        };
+                    } else {
+                        $("#type_val").text("Select label and instance");
+                        $("#type_val").attr("valueType", "");
+                        $('#form_type').replaceWith('<div class="form-group" id="form_type"></div>');
+                    };
+                    if ((data.instance != 0) && (data.instances.indexOf(data.instance) != -1))  {
+                        $("#instances").val(data.instance);
+                    };
+                };
+            });
+        });
+
+        $("#poll_type").change(function() {
+            valueType = $("#type_val").attr("valueType");
+            typePoll = this.value;
+            switch (this.value) {
+                case "rangeNumber" :
+                    values = listVal;
+                    $('#form_type').replaceWith(renderMinMaxForm("form_type", valueType, values.min,values.max));
+                    break;
+                case "serie" :
+                    values = [];
+                    $('#form_type').replaceWith(renderSerieForm("form_type", valueType, values, listVal));
+                    activateFormSerieType();
+                    break;
+                default :
+                    $('#form_type').replaceWith('<div class="form-group" id="form_type"></div>');
+            };
+            activateFormType();
+        });
+        
+        $("[id^='unable'], [id^='disable']").click(function() {
+            console.log("start request unable");
+            if (this.id == 'unable'){  
+                $('#status').removeClass('status-stopped').addClass('status-alive');
+                $('#status').children(".status").text('Unable');
+            } else {
+                $('#status').removeClass('status-alive').addClass('status-stopped');
+                $('#status').children(".status").text('Disable');
+            };
+        });
+            
+        function activateFormSerieType() {
+            $("[name*='del_value']").click(function() {
+                var id = parseInt($(this).attr('valId')) -1;
+                values.splice(id, 1);
+                $('#form_type').replaceWith(renderSerieForm("form_type", valueType, values, listVal));
+                activateFormType();
+                activateFormSerieType();
+            });
+            $("#add_val_serie").click(function() {
+                if (valueType != "") {
+                    values.push(listVal[0]);
+                } else {
+                    values.push('Value type unrecognized');
+                };
+                $('#form_type').replaceWith(renderSerieForm("form_type", valueType, values,listVal));
+                activateFormType();
+                activateFormSerieType();
+            });
+        };
+        
+        function activateFormType() {
+            $('#form_type').change(function () {
+                console.log("list value change");
+                switch (typePoll) {
+                    case "rangeNumber" :
+                        values = parseValuesFromType(valueType, [$("#min").val(),$("#max").val()]);
+                        break;
+                    case "serie" :
+                        var data = [];
+                        var datas = $('#form_type [id^="v-"]')
+                        for (i=0; i < datas.length; i++) {
+                            data.push(datas[i].value);
+                        };
+                        values = parseValuesFromType(valueType, data);
+                };
+            });
+        };
+
+        $('#create_poll').click(function () {
+            console.log('validate creation');
+            clssId =  $("#clss_polled").val();
+            instance = $("#instances").val();
+            label = $("#clss_lab_polled").val();
+            $.getJSON('/virtualnodes/{{ node_ref }}/'+$("#clss_polled").val()+'/create_poll', {
+                    instance: instance,
+                    label: label,
+                    timing: $("#timing").val(),
+                    status: $('#status').children(".status").text().toLowerCase(),
+                    polltype: typePoll,
+                    mode: $("#poll_mode").val(),
+                    values: JSON.stringify(values),
+                    step: step
+                    }, function(data, result) {
+                        console.log("Retour de data :" + JSON.stringify(data));
+                        var label = "";
+                        if (data.result == 'error') {
+                            new PNotify({
+                                    type: 'error',
+                                    title: 'Invalid input',
+                                    text: data.msg,
+                                    delay: 6000
+                            });
+                        } else {
+                            location.pathname ="/virtualnodes/{{ node_ref }}/config"
+                    };
+            });
+        });
+    });
+  </script>
+{% endblock %}
