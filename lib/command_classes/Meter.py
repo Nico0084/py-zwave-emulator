@@ -278,7 +278,7 @@ class Meter(CommandClass):
                 msg.Append(0x04)
             msg.Append(self.GetCommandClassId)
             msg.Append(MeterCmd.SupportedReport)
-            msg.Append(self.getByteType(instance), True)
+            msg.Append(self.getByteType(instance, True))
             if self.m_version > 1 : msg.Append(0x05)
             else : msg.Append(0x00)
             self.GetDriver.SendMsg(msg, MsgQueue.NoOp)

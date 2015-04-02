@@ -31,7 +31,6 @@ along with python-openzwave. If not, see http:#www.gnu.org/licenses.
 """
 
 from zwemulator.lib.defs import *
-from zwemulator.lib.notification import Notification, NotificationType
 from zwemulator.lib.log import LogLevel
 from zwemulator.lib.driver import MsgQueue, Msg
 from commandclass import CommandClass
@@ -63,14 +62,14 @@ class ManufacturerSpecific(CommandClass):
             msg.Append(self.GetCommandClassId)
             msg.Append(ManufacturerSpecificCmd.Report)
             # first two bytes are manufacturer id code
-            manufacturerId = self._node.GetManufacturerId
+            manufacturerId = int(self._node.GetManufacturerId, 16)
             msg.Append((manufacturerId & 0x0000ff00)>>8)
             msg.Append((manufacturerId & 0x000000ff))
             # next four are product type and product id
-            productType = self._node.GetProductType
+            productType = int(self._node.GetProductType,  16)
             msg.Append((productType & 0x0000ff00)>>8)
             msg.Append((productType & 0x000000ff))
-            productId = self._node.GetProductId
+            productId = int(self._node.GetProductId, 16)
             msg.Append((productId & 0x0000ff00)>>8)
             msg.Append((productId & 0x000000ff))
             self.GetDriver.SendMsg(msg, MsgQueue.NoOp)
