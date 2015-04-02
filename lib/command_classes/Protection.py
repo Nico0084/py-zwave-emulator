@@ -31,12 +31,11 @@ along with python-openzwave. If not, see http:#www.gnu.org/licenses.
 """
 
 from zwemulator.lib.defs import *
-from zwemulator.lib.notification import Notification, NotificationType
 from zwemulator.lib.log import LogLevel
 from zwemulator.lib.driver import MsgQueue, Msg
 from commandclass import CommandClass
 
-class ProtectionCmd:
+class ProtectionCmd(EnumNamed):
 	Set		= 0x01
 	Get		= 0x02
 	Report		= 0x03
