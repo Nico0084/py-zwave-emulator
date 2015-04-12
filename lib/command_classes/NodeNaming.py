@@ -1,42 +1,45 @@
 # -*- coding: utf-8 -*-
 
 """
-.. module:: libopenzwave
+.. module:: zwemulator
 
-This file is part of **python-openzwave-emulator** project http:#github.com/p/python-openzwave-emulator.
+This file is part of **py-zwave-emulator** project #https://github.com/Nico0084/py-zwave-emulator.
     :platform: Unix, Windows, MacOS X
-    :sinopsis: openzwave simulator Python
+    :sinopsis: ZWave emulator Python
 
-This project is based on python-openzwave to pass thought hardware zwace device. It use for API developping or testing.
-All C++ and cython code are moved.
+This project is based on openzwave #https://github.com/OpenZWave/open-zwave to pass thought hardware zwave device. It use for API developping or testing.
+
+- Openzwave config files are use to load a fake zwave network an handle virtual nodes. All configured manufacturer device cant be create in emulator.
+- Use serial port emulator to create com, you can use software like socat #http://www.dest-unreach.org/socat/
+- eg command line : socat -d -d PTY,ignoreeof,echo=0,raw,link=/tmp/ttyS0 PTY,ignoreeof,echo=0,raw,link=/tmp/ttyS1 &
+- Run from bin/zwemulator.py
+- Web UI access in local, port 4500
+
 
 .. moduleauthor: Nico0084 <nico84dev@gmail.com>
-.. moduleauthor: bibi21000 aka Sébastien GALLET <bibi21000@gmail.com>
-.. moduleauthor: Maarten Damen <m.damen@gmail.com>
 
 License : GPL(v3)
 
-**python-openzwave** is free software: you can redistribute it and/or modify
+**py-zwave-emulator** is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-**python-openzwave** is distributed in the hope that it will be useful,
+**py-zwave-emulator** is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
-along with python-openzwave. If not, see http:#www.gnu.org/licenses.
+along with py-zwave-emulator. If not, see http:#www.gnu.org/licenses.
 
 """
 
 from zwemulator.lib.defs import *
-from zwemulator.lib.notification import Notification, NotificationType
 from zwemulator.lib.log import LogLevel
 from zwemulator.lib.driver import MsgQueue, Msg
 from commandclass import CommandClass
 
-class NodeNamingCmd:
+class NodeNamingCmd(EnumNamed):
 	Set				= 0x01
 	Get				= 0x02
 	Report			= 0x03
@@ -44,7 +47,7 @@ class NodeNamingCmd:
 	LocationGet		= 0x05
 	LocationReport	= 0x06
 
-class StringEncoding:
+class StringEncoding(EnumNamed):
 	StringEncoding_ASCII = 0
 	StringEncoding_ExtendedASCII = 1
 	StringEncoding_UTF16 = 2
@@ -199,3 +202,138 @@ class NodeNaming(CommandClass):
     GetCommandClassId = property(lambda self: self.StaticGetCommandClassId)
     GetCommandClassName = property(lambda self: self.StaticGetCommandClassName)
 
+    def getFullNameCmd(self,  _id):
+        return NodeNamingCmd().getFullName(_id)
+
+    def ProcessMsg(self, _data, instance=1, multiInstanceData = []):
+        if _data[0] == NodeNamingCmd.Get:
+            msg = Msg("NodeNamingCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+            value = self._node.getValue(self.GetCommandClassId, instance, 0) # Name index is allways 0
+            if value is not None : name = value._value
+            else : name = self._node.name
+            if name is not None :
+                msg.Append(TRANSMIT_COMPLETE_OK)
+                msg.Append(self.nodeId)
+                dStr = self.encodeString(name) # for moment only StringEncoding_ASCII
+                msg.Append(2 + len(dStr))
+                msg.Append(self.GetCommandClassId)
+                msg.Append(NodeNamingCmd.Report)
+                for d in dStr : msg.Append(d)
+                self.GetDriver.SendMsg(msg, MsgQueue.NoOp)    
+            else :
+                msg.Append(TRANSMIT_COMPLETE_NOROUTE)
+                msg.Append(self.nodeId)
+                self.GetDriver.SendMsg(msg, MsgQueue.NoOp)    
+        elif _data[0] == NodeNamingCmd.Set:
+            value = self._node.getValue(self.GetCommandClassId, instance, 0) # Name index is allways 0
+            name = self.extractString(_data, len(_data))
+            if name :
+                if value is not None: value.setVal(name)
+                self._node.name = name
+                self._log.write(LogLevel.Detail, self, "{0} cmd received: {1}".format(self.getFullNameCmd(_data[0]), name))
+                #TODO: Verify is response is necessary ?
+#                self.HandleReportChange("NodeNamingCmd_Report", self, [NodeNamingCmd.Get], instance)
+            else :
+                self._log.write(LogLevel.Warning, self, "{0}, no name extract from data : {1}".format(self.getFullNameCmd(_data[0]), GetDataAsHex(_data)))
+        elif _data[0] == NodeNamingCmd.LocationGet:
+            msg = Msg("NodeNamingCmd_LocationReport", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+            value = self._node.getValue(self.GetCommandClassId, instance, 1) # TODO : Check this : Location index presumed allways 1
+            if value is not None : location = value._value
+            else : location = self._node.location
+            if location is not None :
+                msg.Append(TRANSMIT_COMPLETE_OK)
+                msg.Append(self.nodeId)
+                dStr = self.encodeString(location) # for momment only StringEncoding_ASCII
+                msg.Append(2 + len(dStr))
+                msg.Append(self.GetCommandClassId)
+                msg.Append(NodeNamingCmd.LocationReport)
+                for d in dStr : msg.Append(d)
+                self.GetDriver.SendMsg(msg, MsgQueue.NoOp)    
+            else :
+                msg.Append(TRANSMIT_COMPLETE_NOROUTE)
+                msg.Append(self.nodeId)
+                self.GetDriver.SendMsg(msg, MsgQueue.NoOp)    
+        elif _data[0] == NodeNamingCmd.LocationSet:
+            value = self._node.getValue(self.GetCommandClassId, instance, 1) # TODO : Check this : Location index presumed allways 1
+            location = self.extractString(_data, len(_data))
+            if location :
+                if value is not None: value.setVal(location)
+                self._node.location = location
+                self._log.write(LogLevel.Detail, self, "{0} cmd received: {1}".format(self.getFullNameCmd(_data[0]), location))
+                #TODO: Verify is response is necessary ?
+#                self.HandleReportChange("NodeNamingCmd_LocationReport", self, [NodeNamingCmd.LocationGet], instance)
+            else :
+                self._log.write(LogLevel.Warning, self, "{0}, no location extract from data : {1}".format(self.getFullNameCmd(_data[0]), GetDataAsHex(_data)))
+
+        else:
+            self._log.write(LogLevel.Warning, self, "CommandClass REQUEST {0}, Not implemented : {1}".format(self.getFullNameCmd(_data[0]), GetDataAsHex(_data)))
+
+    def encodeString(self, strVal,  encoding = StringEncoding.StringEncoding_ASCII):
+        # The length of the string (maximum allowed is 16 bytes)
+        data = []
+        data.append(encoding)
+        if len(strVal) > 16 : strVal = strVal[:16]
+        print strVal
+        if encoding == StringEncoding.StringEncoding_ASCII :
+            for i in strVal : data.append(ord(i))
+        return data
+        
+    def extractString(self, _data,  _length):
+        encoding = _data[1] & 0x07 
+        strVal =""
+        if _length >= 3 :
+            # Get the length of the string (maximum allowed is 16 bytes)
+            numBytes = _length - 3
+            if numBytes > 16 : numBytes = 16
+            if encoding == StringEncoding.StringEncoding_ASCII:
+                # Copy data as-is
+                for i in range(0, numBytes+1) :
+                    strVal += chr(_data[i+2])
+            elif encoding == StringEncoding.StringEncoding_ExtendedASCII:
+            # Convert Extended ASCII characters to UTF-8
+                surrogate = 0
+                for i in range(0, numBytes+1) :
+                    ch = _data[i+2];
+                    if ch >= 0x80 :
+                        utf16 = c_extendedAsciiToUnicode[ch - 0x80]
+                        strVal, surrogate = self.ConvertUFT16ToUTF8( utf16, strVal, surrogate)
+                    else :
+                       strval += chr(ch)
+            elif encoding == StringEncoding.StringEncoding_UTF16:
+                # Convert UTF-16 characters to UTF-8
+                surrogate = 0
+                for i in range(0, numBytes+1, 2) :
+                    utf16 = ((_data[i+2])<<8) | _data[i+3]
+                    strVal, surrogate = self.ConvertUFT16ToUTF8( utf16, strVal, surrogate)
+        return strVal
+
+        def ConvertUFT16ToUTF8(self, _utf16, _buffer, surrogate = 0):
+            #Convert a UTF-16 string into UTF-8 encoding.
+            if (( surrogate != 0 ) and (( _utf16 & 0xdc00 ) == 0xdc00 )):
+                # UTF-16 surrogate character pair converts to four UTF-8 characters.
+                # We have the second member of the pair, so we can do the conversion now.
+                _buffer += chr(((surrogate>>7) & 0x0007) | 0x00f0)
+                _buffer += chr(((surrogate>>1) & 0x0020) | ((surrogate>>2) & 0x000f) | 0x0090)
+                _buffer += chr(((_utf16>>6) & 0x000f) | ((surrogate<<4) & 0x0030) | 0x0080)
+                _buffer += chr((_utf16 & 0x003f) | 0x0080)
+            else :
+                surrogate = 0
+                if _utf16 & 0xff80 :
+                    if _utf16 & 0xf800 :
+                        if ( _utf16 & 0xd800 ) == 0xd800 :
+                            # UTF-16 surrogate character pair converts to four UTF-8 characters.
+                            # We have the first member of the pair, so we store it for next time.
+                            surrogate = _utf16
+                        else :
+                            # UTF-16 character can be represented by three UTF-8 characters.
+                            _buffer += chr((_utf16>>12) | 0x00e0)
+                            _buffer += chr(((_utf16>>6) & 0x003f) | 0x0080)
+                            _buffer += chr((_utf16 & 0x003f) | 0x0080)
+                    else :
+                        # UTF-16 character can be represented by two UTF-8 characters.
+                        _buffer += chr((_utf16>>6) | 0x00c0)
+                        _buffer += chr((_utf16 & 0x003f) | 0x0080)
+                else :
+                    # UTF-16 character matches single ascii character.
+                    _buffer += chr(_utf16)
+        return _buffer, surrogate

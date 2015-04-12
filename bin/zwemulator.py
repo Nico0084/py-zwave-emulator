@@ -4,29 +4,34 @@
 """
 .. module:: zwemulator
 
-This file is part of **python-ozw-ctlr-emulator** project http://github.com/Nico0084/python-ozw-ctlr-emulator.
-    :platform: Unix
-    :sinopsis: openzwave controller serial simulator Python
+This file is part of **py-zwave-emulator** project #https://github.com/Nico0084/py-zwave-emulator.
+    :platform: Unix, Windows, MacOS X
+    :sinopsis: ZWave emulator Python
 
-This project is based on openzwave lib to pass thought hardware zwave device. It use for API developping or testing.
-Based on openzwave project config files to simulate a zwave network and his nodes.
-All C++ and cython code are moved.
+This project is based on openzwave #https://github.com/OpenZWave/open-zwave to pass thought hardware zwave device. It use for API developping or testing.
+
+- Openzwave config files are use to load a fake zwave network an handle virtual nodes. All configured manufacturer device cant be create in emulator.
+- Use serial port emulator to create com, you can use software like socat #http://www.dest-unreach.org/socat/
+- eg command line : socat -d -d PTY,ignoreeof,echo=0,raw,link=/tmp/ttyS0 PTY,ignoreeof,echo=0,raw,link=/tmp/ttyS1 &
+- Run from bin/zwemulator.py
+- Web UI access in local, port 4500
+
 
 .. moduleauthor: Nico0084 <nico84dev@gmail.com>
 
 License : GPL(v3)
 
-**python-ozw-ctlr-emulator** is free software: you can redistribute it and/or modify
+**py-zwave-emulator** is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-**python-ozw-ctlr-emulator** is distributed in the hope that it will be useful,
+**py-zwave-emulator** is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
-along with python-openzwave. If not, see http://www.gnu.org/licenses.
+along with py-zwave-emulator. If not, see http:#www.gnu.org/licenses.
 
 """
 
