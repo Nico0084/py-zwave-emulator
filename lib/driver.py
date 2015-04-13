@@ -926,9 +926,8 @@ class Driver:
         
     def HandleSetVersionResponse(self):
         #[0x01, 0x10, 0x01, 0x15, 0x5a, 0x2d, 0x57, 0x61, 0x76, 0x65, 0x20, 0x32, 0x2e, 0x37, 0x38, 0x00, 0x01, 0x9b]
-        version = "Z-Wave 2.78"
         msg = Msg( "Response to ZW_GET_VERSION", self.nodeId,  RESPONSE, FUNC_ID_ZW_GET_VERSION, False)
-        for  c in self._manager.getZwVersion(): msg.Append(ord(c))
+        for  c in self._manager.getZwVersion(self.homeId): msg.Append(ord(c))
         msg.Append(0)
         msg.Append(1) # LibraryType 1 = Static Controller
         self.SendMsg(msg, MsgQueue.NoOp)
@@ -952,7 +951,7 @@ class Driver:
     def HandleSetSerialAPICapabilitiesResponse(self):
         #[0x01, 0x2b, 0x01, 0x07, 0x03, 0x07, 0x00, 0x86, 0x00, 0x02, 0x00, 0x01,     0xfe, 0x80, 0xfe, 0x88, 0x0f, 0x00, 0x00, 0x00, 0xfb, 0x97, 0x7f, 0x82, 0x07, 0x00, 0x00, 0x80, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc2]
         msg = Msg( "Response to SERIAL_API_GET_CAPABILITIES", self.nodeId,  RESPONSE, FUNC_ID_SERIAL_API_GET_CAPABILITIES, False)
-        sAPIVers = self._manager.getSerialAPIVersion()
+        sAPIVers = self._manager.getSerialAPIVersion(self.homeId)
         msg.Append(sAPIVers[0])
         msg.Append(sAPIVers[1])
         manufacturerId = self._node.manufacturer['id']
@@ -1002,7 +1001,7 @@ class Driver:
         for n in nodes : tab[(n -1)  //8] |= 0x01 << ((n-1) % 8)
         for i in tab: msg.Append(i)
         # Add presumed RF Zwave chip  version
-        chipVers = self._manager.getRFChipVersion()
+        chipVers = self._manager.getRFChipVersion(self.homeId)
         msg.Append(chipVers[0])
         msg.Append(chipVers[1])
         self.SendMsg(msg, MsgQueue.NoOp)

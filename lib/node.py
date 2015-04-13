@@ -1,32 +1,36 @@
 # -*- coding: utf-8 -*-
 
 """
-.. module:: libopenzwave
+.. module:: zwemulator
 
-This file is part of **python-openzwave-emulator** project http:#github.com/p/python-openzwave-emulator.
+This file is part of **py-zwave-emulator** project #https://github.com/Nico0084/py-zwave-emulator.
     :platform: Unix, Windows, MacOS X
-    :sinopsis: openzwave simulator Python
+    :sinopsis: ZWave emulator Python
 
-This project is based on python-openzwave to pass thought hardware zwace device. It use for API developping or testing.
-All C++ and cython code are moved.
+This project is based on openzwave #https://github.com/OpenZWave/open-zwave to pass thought hardware zwave device. It use for API developping or testing.
+
+- Openzwave config files are use to load a fake zwave network an handle virtual nodes. All configured manufacturer device cant be create in emulator.
+- Use serial port emulator to create com, you can use software like socat #http://www.dest-unreach.org/socat/
+- eg command line : socat -d -d PTY,ignoreeof,echo=0,raw,link=/tmp/ttyS0 PTY,ignoreeof,echo=0,raw,link=/tmp/ttyS1 &
+- Run from bin/zwemulator.py
+- Web UI access in local, port 4500
+
 
 .. moduleauthor: Nico0084 <nico84dev@gmail.com>
-.. moduleauthor: bibi21000 aka Sébastien GALLET <bibi21000@gmail.com>
-.. moduleauthor: Maarten Damen <m.damen@gmail.com>
 
 License : GPL(v3)
 
-**python-openzwave** is free software: you can redistribute it and/or modify
+**py-zwave-emulator** is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-**python-openzwave** is distributed in the hope that it will be useful,
+**py-zwave-emulator** is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
-along with python-openzwave. If not, see http:#www.gnu.org/licenses.
+along with py-zwave-emulator. If not, see http:#www.gnu.org/licenses.
 
 """
 
@@ -140,8 +144,8 @@ class Node:
         self.query_stage = ""
         self._mapping = None
         self._mandatoryClasses = []
-        self.neighbors = self._manager.getFakeNeighbors(self.nodeId) # FAKENEIGHBORS[self.nodeId]
-        self.emulData = self._manager.getEmulNodeData(self.nodeId)
+        self.neighbors = self._manager.getFakeNeighbors(self.homeId, self.nodeId) # FAKENEIGHBORS[self.nodeId]
+        self.emulData = self._manager.getEmulNodeData(self.homeId, self.nodeId)
         self._runningPoll = False
         
         self.numEndPoints = 0

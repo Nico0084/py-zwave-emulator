@@ -30,11 +30,11 @@ along with python-openzwave. If not, see http://www.gnu.org/licenses.
 
 """
 from zwemulator.lib.defs import *
-from zwemulator.lib.node import NodeData,  Node
-from zwemulator.lib.driver import DriverData, Driver
-from zwemulator.lib.driver import ControllerInterface, ControllerCommand, ControllerState #, pfnControllerCallback_t
+from zwemulator.lib.node import Node
+from zwemulator.lib.driver import Driver
+#from zwemulator.lib.driver import ControllerInterface, ControllerCommand, ControllerState #, pfnControllerCallback_t
 from zwemulator.lib.notification import Notification, NotificationType, NotificationsWatcher
-from zwemulator.lib.values import ValueGenre, ValueType, ValueID
+from zwemulator.lib.values import ValueGenre, ValueType #, ValueID
 from zwemulator.lib.options import Options
 from zwemulator.lib.log import Log, LogLevel
 from zwemulator.lib.vers import ozw_vers_major, ozw_vers_minor, ozw_vers_revision
@@ -43,6 +43,8 @@ from zwemulator.lib.command_classes.commandclasses import CommandClasses
 import os
 import re
 import threading
+import psutil
+import subprocess
 
 MANAGER = None  # A Singleton for manager
 OPTIONS = Options() # A Singleton for Options
@@ -124,9 +126,9 @@ class Manager(object):
         if not self.initialized :
             self._nodes = []
             self.drivers = []
-            self._xmlData = []
             self._DeviceClass = []
-            self.configData = {}
+            self.zwNetworks = {}            
+            self.paramsConfig = {}
             self._stop = threading.Event()
     #        find, configPath = self._options.GetOptionAsString( "ConfigPath")
     #        self.readXmlDeviceClasses(configPath)
@@ -169,27 +171,69 @@ class Manager(object):
         self.manufacturers = Manufacturers(configPath)
         self.cmdClassRegistered = CommandClasses(self)
         self.cmdClassRegistered.RegisterCommandClasses()
-        try :
-            self.configData = readJsonFile('../data/config_emulation.json')
-            self._log.write(LogLevel.Always, self,"Config for emulation loaded : {0}".format(self.configData))
-        except:
-            self._log.write(LogLevel.Warning, self,"No correct file config for emulation in data path.")
+#        try :
+#            self.paramsConfig = readJsonFile('../data/config_emulation.json')
+#            self._log.write(LogLevel.Always, self,"Config parameters loaded : {0}".format(self.paramsConfig))
+#        except:
+#            self._log.write(LogLevel.Warning, self,"No correct file config for emulation in data path.")
         self.loadXmlConfig()
 #        Scene.ReadScenes()
-
         self._log.write(LogLevel.Always, self, "OpenZwave-emulator Version {0} Starting Up".format(self.getVersionAsString()))
-        
+        for homeId in self.zwNetworks : 
+            self.startDriver(homeId)
+            
     def GetValAsHex(self, value, nChar = 2):
         print 
         if type(value) != 'list' : data = [value]
         else : data =value
         return GetDataAsHex(data, nChar)
         
+    def checkVirtualCom(self, homeId):
+        """Check if a virtual port emulator is running"""
+        if 'configData' in self.zwNetworks[homeId] :
+            configData = self.zwNetworks[homeId]['configData']
+            if 'virtualcom' in configData :
+                if  configData['virtualcom']['modul'] == 'socat' :
+                    pids = psutil.pids()
+                    for i in pids:
+                        p = psutil.Process(i)
+                        if p.name() == 'socat' :
+                            chk_zwavectrl = False
+                            chk_emulator = False
+                            for lig in p.cmdline():
+                                if lig.find(configData['virtualcom']['ports']['zwavectrl']) != -1 : chk_zwavectrl = True
+                                if lig.find(configData['virtualcom']['ports']['emulator']) != -1 : chk_emulator = True
+                            if chk_zwavectrl and chk_emulator :
+                                self._log.write(LogLevel.Always, self, "Virtual port socat running on {0} for zwave serial port {1}.".format( configData['virtualcom']['ports']['emulator'], configData['virtualcom']['ports']['zwavectrl']))
+                                return True
+        self._log.write(LogLevel.Always, self, "Virtual communication system not running.")
+        return False
+        
+    def startVirtualCom(self, homeId, start = False):
+        if 'configData' in self.zwNetworks[homeId] and 'virtualcom' in self.zwNetworks[homeId]['configData']:
+            virtualcom = self.zwNetworks[homeId]['configData']['virtualcom']
+            if start or virtualcom['start'] == 'auto':
+                if not self.checkVirtualCom(homeId) :
+                    if virtualcom['modul'] == 'socat' :
+                        if virtualcom['ports']['zwavectrl'] and virtualcom['ports']['emulator'] :
+                            self._log.write(LogLevel.Info, self, "Starting Virtual communication system...")
+                            subprocess.Popen(['socat','-d', '-d', 'PTY,ignoreeof,echo=0,raw,link={0}'.format(virtualcom['ports']['zwavectrl']),
+                                                    'PTY,ignoreeof,echo=0,raw,link={0}'.format(virtualcom['ports']['emulator'])])
+                            self._stop.wait(1)
+                            if not self.checkVirtualCom(homeId) : 
+                                self._log.write(LogLevel.Error, self, "Error on starting Virtual communication system.")
+                    else :
+                        self._log.write(LogLevel.Warning, self, "Virtual communication configuration not handled : {0}".format(virtualcom))
+            else :
+                self._log.write(LogLevel.Always, self, "Virtual communication system not in auto start-up.")
+        else :
+            self._log.write(LogLevel.Warning, self, "No configuration set for virtual communication on zwave HomeId {0}".format(homeId))
+        
     def getVersionAsString(self):
         return "{0}.{1}.{2}".format(ozw_vers_major, ozw_vers_minor, ozw_vers_revision)
         
     def readXmlNetwork(self, fileConf):
-        self._xmlData = networkFileConfig(fileConf)
+        return networkFileConfig(fileConf)
         
     def readXmlDeviceClasses(self, pathConf):
         self._DeviceClass = DeviceClasses(pathConf)
@@ -200,46 +244,57 @@ class Manager(object):
         xmlFormat = r"^zwcfg_0x[0-9,a-f,A-F]{8}.xml$"
         for f in files:
             if re.match(xmlFormat,  f) is not None :
-                self.readXmlNetwork(dataDir + "/" + f)
-                self._log.write(LogLevel.Always, self, " Loading {0} openzwave file config....".format(dataDir + "/" + f))
-                driverData = self._xmlData.getDriver(0)
-                print driverData
-                homeId = driverData['homeId']
-                nodes = self._xmlData.listeNodes()
-                for node in nodes :
-                    xmlNode = self._xmlData.getNode(node)
-                    self.addXmlNode(homeId,  xmlNode['id'],  xmlNode)
-                self.drivers.append(Driver(self, self.getNode(homeId, driverData['nodeId']),  driverData))
-                print " +++ driver added +++"
-    
-    def getZwVersion(self):
-        if 'controller' in self.configData:
-            if 'zwversion' in self.configData['controller']:
-                return self.configData['controller']['zwversion']
+                if f not in self.zwNetworks :
+                    xmlData = self.readXmlNetwork(dataDir + "/" + f)
+                    driverData = xmlData.getDriver(0)
+                    homeId = driverData['homeId']
+                    self.zwNetworks[homeId] = {'xmlData': self.readXmlNetwork(dataDir + "/" + f)}
+                    configFile = f.replace('xml', 'json')
+                    self._log.write(LogLevel.Always, self, " Loading {0} openzwave file config....".format(dataDir + "/" + f))
+                    try : 
+                        self.zwNetworks[homeId]['configData'] = readJsonFile(dataDir + "/" +  configFile)
+                        self._log.write(LogLevel.Always, self,"Config for emulation loaded : {0}".format(self.zwNetworks[homeId]['configData']))
+                    except :
+                        self._log.write(LogLevel.Error, self,"Error on readind config file for emulation :{0}".format(dataDir + "/" +  configFile))                    
+                    print driverData
+                    nodes = self.zwNetworks[homeId]['xmlData'].listeNodes()
+                    for node in nodes :
+                        xmlNode = self.zwNetworks[homeId]['xmlData'].getNode(node)
+                        self.addXmlNode(homeId,  xmlNode['id'],  xmlNode)
+                    self.startVirtualCom(homeId)
+                    self.drivers.append(Driver(self, self.getNode(homeId, driverData['nodeId']),  driverData))
+                    print " +++ driver added +++"
+                else :
+                    self._log.write(LogLevel.Warning, self,"Zwave network allready loaded :{0}".format(f))                    
+                    
+    def getZwVersion(self, homeId):
+        if 'controller' in self.zwNetworks[homeId]['configData']:
+            if 'zwversion' in self.zwNetworks[homeId]['configData']['controller']:
+                return self.zwNetworks[homeId]['configData']['controller']['zwversion']
         return ZWVERSION
     
-    def getSerialAPIVersion(self):
-        if 'controller' in self.configData:
-            if 'serialapiversion' in self.configData['controller']:
-                return self.configData['controller']['serialapiversion']
+    def getSerialAPIVersion(self, homeId):
+        if 'controller' in self.zwNetworks[homeId]['configData']:
+            if 'serialapiversion' in self.zwNetworks[homeId]['configData']['controller']:
+                return self.zwNetworks[homeId]['configData']['controller']['serialapiversion']
         return SERIALAPIVERSION
 
-    def getRFChipVersion(self):
-        if 'controller' in self.configData:
-            if 'rfchipversion' in self.configData['controller']:
-                return self.configData['controller']['rfchipversion']
+    def getRFChipVersion(self, homeId):
+        if 'controller' in self.zwNetworks[homeId]['configData']:
+            if 'rfchipversion' in self.zwNetworks[homeId]['configData']['controller']:
+                return self.zwNetworks[homeId]['configData']['controller']['rfchipversion']
         return RFCHIPVERSION
 
-    def getFakeNeighbors(self, nodeId):
-        if 'controller' in self.configData:
-            if 'fakeneighbors' in self.configData['controller']:
-                if str(nodeId) in self.configData['controller']['fakeneighbors']:
-                    return self.configData['controller']['fakeneighbors'][str(nodeId)]
+    def getFakeNeighbors(self, homeId, nodeId):
+        if 'controller' in self.zwNetworks[homeId]['configData']:
+            if 'fakeneighbors' in self.zwNetworks[homeId]['configData']['controller']:
+                if str(nodeId) in self.zwNetworks[homeId]['configData']['controller']['fakeneighbors']:
+                    return self.zwNetworks[homeId]['configData']['controller']['fakeneighbors'][str(nodeId)]
         return []
         
-    def getEmulNodeData(self, nodeId):
-        if 'nodes' in self.configData:
-            for n in self.configData['nodes']:
+    def getEmulNodeData(self, homeId, nodeId):
+        if 'nodes' in self.zwNetworks[homeId]['configData']:
+            for n in  self.zwNetworks[homeId]['configData']['nodes']:
                 if 'nodeid' in n and n['nodeid'] == nodeId:
                     return n
         return { "nodeid" : nodeId,
@@ -292,22 +347,24 @@ class Manager(object):
             self._log.write(LogLevel.Warning, self, "Watcher {0} all ready exist, not Adding".format(pycallback))
             return False
 
-    def AddDriver(self, serialport):
-        if self.drivers:
-            for driver in self.drivers:
-                if driver.serialport is None: # Object Driver not assigned and ready to set serialport
-                    driver.setSerialport(serialport)
-                    self._log.write(LogLevel.Info, self, "Added driver for controller {0}".format(serialport))
-                    driver.Start()
-                    return True
-                elif driver.serialport == serialport: 
-                    self._log.write(LogLevel.Warning, self, "Cannot add driver for controller {0} - driver already exists".format(serialport))
-                    return False
-            self._log.write(LogLevel.Warning, self, "Cannot add driver for controller {0} - no emulate driver available".format(serialport))
-            return False
-        else: 
-            self._log.write(LogLevel.Info, Warning, "Cannot add driver for controller {0} - no emulate driver loaded".format(serialport))
-            return False
+    def startDriver(self, homeId):
+        if self.checkVirtualCom(homeId) :
+            serialport = self.zwNetworks[homeId]['configData']['virtualcom']['ports']['emulator'] 
+            if self.drivers:
+                for driver in self.drivers:
+                    if driver.serialport is None: # Object Driver not assigned and ready to set serialport
+                        driver.setSerialport(serialport)
+                        self._log.write(LogLevel.Info, self, "Added driver for controller {0}".format(serialport))
+                        driver.Start()
+                        return True
+                    elif driver.serialport == serialport: 
+                        self._log.write(LogLevel.Warning, self, "Cannot add driver for controller {0} - driver already exists".format(serialport))
+                        return False
+                self._log.write(LogLevel.Warning, self, "Cannot add driver for controller {0} - no emulate driver available".format(serialport))
+                return False
+            else: 
+                self._log.write(LogLevel.Info, Warning, "Cannot add driver for controller {0} - no emulate driver loaded".format(serialport))
+                return False
     
     def GetDriver(self, homeId):
         for driver in self.drivers:
@@ -578,8 +635,6 @@ if __name__ == "__main__":
     OPTIONS.Lock()
     manager = Manager()
     manager.Create()
-    manager.Addwatcher(notif_callback, API().pyCallback)
-    manager.AddDriver('/tmp/ttyS1')
     
     import time
     while True and not manager._stop.isSet():

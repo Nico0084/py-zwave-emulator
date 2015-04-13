@@ -1,51 +1,45 @@
 # -*- coding: utf-8 -*-
 
-""" This file is part of B{Domogik} project (U{http://www.domogik.org}$
+"""
+.. module:: libozwctlremulator
 
-License
-=======
+This file is part of **python-ozw-ctlr-emulator** project http://github.com/Nico0084/python-ozw-ctlr-emulator.
+    :platform: Unix
+    :sinopsis: openzwave controller serial simulator Python
 
-B{Domogik} is free software: you can redistribute it and/or modify
+This project is based on openzwave lib to pass thought hardware zwave device. It use for API developping or testing.
+Based on openzwave project config files to simulate a zwave network and his nodes.
+All C++ and cython code are moved.
+
+.. moduleauthor: Nico0084 <nico84dev@gmail.com>
+
+License : GPL(v3)
+
+**python-ozw-ctlr-emulator** is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-B{Domogik} is distributed in the hope that it will be useful,
+**python-ozw-ctlr-emulator** is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 GNU General Public License for more details.
-
 You should have received a copy of the GNU General Public License
-along with Domogik. If not, see U{http://www.gnu.org/licenses}.
+along with python-openzwave. If not, see http://www.gnu.org/licenses.
 
-Plugin purpose
-==============
-
-Support Z-wave technology
-
-Implements
-==========
-
-Read openzwave lib C++ xml files configurations
-
-@author: Nico <nico84dev@gmail.com>
-@copyright: (C) 2007-2013 Domogik project
-@license: GPL(v3)
-@organization: Domogik
 """
 
 #from ozwdefs import *
 #import libopenzwave
 from xml.dom import minidom
-from xml.dom import minidom
-import json
+#import json
 import sys
 
 class OZwaveConfigException(Exception):
     """"Zwave Manager exception  class"""
             
     def __init__(self, value):
-        OZwaveException.__init__(self, value)
+        Exception.__init__(self, value)
         self.msg = "OZwave XML files exception:"
 
 class DeviceProduct():

@@ -9,11 +9,14 @@ Under construction ...
 This project is based on [openzwave](https://github.com/OpenZWave/open-zwave) to pass thought hardware zwave device. It use for API developping or testing.
 
 ## Basic Instruction
-- Openzwave config files are use to load a fake zwave network an handle virtual nodes. All configured manufacturer device can be create in emulator.
+- Openzwave config files "zwcfg_0xyourhomeID.xml" are use to load a fake zwave network an handle virtual nodes. All configured manufacturer device can be uses in emulator.
 - Use serial port emulator to create com, you can use software like [socat](http://www.dest-unreach.org/socat/)
-- eg command line : socat -d -d PTY,ignoreeof,echo=0,raw,link=/tmp/ttyS0 PTY,ignoreeof,echo=0,raw,link=/tmp/ttyS1 &
-- Run from bin/zwemulator.py (serial port default : /tmp/ttyS0)
-- Web UI access on local address (port default : 4500)
+     - eg command line : socat -d -d PTY,ignoreeof,echo=0,raw,link=/tmp/ttyS0 PTY,ignoreeof,echo=0,raw,link=/tmp/ttyS1 &
+     - zwemulator can start socat for you if it set in "zwcfg_0xyourhomeID.json" 
+- In directory data file "config_emulation.json" set general parameters
+- In directory data file "zwcfg_0xyourhomeID.json" set parameters for emulate zwave network from openzwave xml config
+- Run from bin/zwemulator.py (serial port default : /tmp/ttyS1)
+- Web UI access on local address default en port default 4500
 
 
 ## License : GPL(v3)

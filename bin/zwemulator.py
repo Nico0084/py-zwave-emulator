@@ -38,9 +38,11 @@ along with py-zwave-emulator. If not, see http:#www.gnu.org/licenses.
 import sys
 sys.path.insert(0,'../..')
 
-from threading import Event, Thread
-from zwemulator.lib.manager import MANAGER, OPTIONS,  Manager 
+from threading import Thread
+from zwemulator.lib.manager import OPTIONS,  Manager 
 from zwemulator.wui.zwemulatorwui import app
+from zwemulator.lib.defs import readJsonFile
+
 from flask import request
  
 
@@ -60,18 +62,24 @@ def shutdown_server():
         print "Server already stopped."
 
 if __name__ == '__main__':
-    print "************** Start in main of zwemulator.py **************"
+    print "************** Start in main zwemulator.py **************"
     OPTIONS.create("../openzwave/config", "", "--logging true --LogFileName test.log")
     print "NotifyTransactions :", OPTIONS.AddOptionBool('NotifyTransactions',  True)
     OPTIONS.Lock()
     manager = Manager()
-    wuiApp = Thread(None, joinwui, "th_wui_zwave_ctrl_emulator", (), {'manager':manager})
-    wuiApp.start()
-    manager.Create()
-#    manager.Addwatcher(notif_callback, API().pyCallback)
-    manager.AddDriver('/tmp/ttyS1')
-    
-    app.run(host='0.0.0.0', port=4500, threaded=True, use_reloader=False)
-    manager._stop.set()
-    for driver in manager.drivers:
-        driver.running = False
+    try :
+        manager.paramsConfig = readJsonFile('../data/config_emulation.json')
+        print 'readed'
+        print "Config parameters loaded : {0}".format(manager.paramsConfig)
+        host = manager.paramsConfig['webui']['host']
+        port = manager.paramsConfig['webui']['port']
+        wuiApp = Thread(None, joinwui, "th_wui_zwave_ctrl_emulator", (), {'manager':manager})
+        wuiApp.start()
+        manager.Create()
+    #    manager.Addwatcher(notif_callback, API().pyCallback)
+        app.run(host=host, port=port, threaded=True, use_reloader=False)
+        manager._stop.set()
+        for driver in manager.drivers:
+            driver.running = False
+    except:
+        print "No correct file config for emulation in data path. EXIT"
