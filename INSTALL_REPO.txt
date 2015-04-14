@@ -1,0 +1,62 @@
+
+Installing py-zwave-emulator from repositories
+*********************************************
+
+
+Install the needed tools
+========================
+
+You must install mercurial and subversion to get sources of py-zwave-emulator. Look at the documentation of your Linux
+distribution to do that.
+
+On a debian like distribution :
+
+   sudo apt-get install mercurial subversion python-pip python-dev
+
+You also need some python modules, on a debian like distribution :
+
+   sudo apt-get install python-dev python-setuptools
+
+You need some python lib.
+
+On a debian like distribution :
+
+   sudo pip install Flask             (>=0.10.1)
+   sudo pip install Flask-Login     (>=0.2.11)
+   sudo pip install psutil             (>=2.2.1)
+   sudo pip install pyserial          (>=2.6)
+   
+You need a serial port emulator like socat:
+
+On a debian like distribution :
+
+   sudo apt-get install socat
+
+
+Get sources of py-zwave-emulator
+===============================
+
+You are now ready to download sources of py-zwave-emulator :
+
+   git clone https://github.com/Nico0084/py-zwave-emulator.git
+
+The previous command will create a copy of the official repository on
+your computer in a directory called py-zwave-emulator.
+
+
+Update and build process
+========================
+
+Go to the previously created directory
+
+   cd py-zwave-emulator
+
+The following command will update your local repository to the last
+release of py-zwave-emulator.
+
+   git pull
+
+Installation
+============
+
+No installation needed. Just run /bin/zwemulator.py

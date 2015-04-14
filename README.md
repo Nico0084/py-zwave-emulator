@@ -16,7 +16,7 @@ This project is based on [openzwave](https://github.com/OpenZWave/open-zwave) to
 - In directory data file "config_emulation.json" set general parameters
 - In directory data file "zwcfg_0xyourhomeID.json" set parameters for emulate zwave network from openzwave xml config
 - Run from bin/zwemulator.py (serial port default : /tmp/ttyS1)
-- Web UI access on local address default en port default 4500
+- Web UI access on local address default and port default 4500
 
 
 ## License : GPL(v3)

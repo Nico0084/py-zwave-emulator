@@ -69,7 +69,6 @@ if __name__ == '__main__':
     manager = Manager()
     try :
         manager.paramsConfig = readJsonFile('../data/config_emulation.json')
-        print 'readed'
         print "Config parameters loaded : {0}".format(manager.paramsConfig)
         host = manager.paramsConfig['webui']['host']
         port = manager.paramsConfig['webui']['port']
