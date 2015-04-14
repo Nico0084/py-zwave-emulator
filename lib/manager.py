@@ -38,9 +38,6 @@ along with py-zwave-emulator. If not, see http:#www.gnu.org/licenses.
 from zwemulator.lib.defs import *
 from zwemulator.lib.node import Node
 from zwemulator.lib.driver import Driver
-#from zwemulator.lib.driver import ControllerInterface, ControllerCommand, ControllerState #, pfnControllerCallback_t
-from zwemulator.lib.notification import Notification, NotificationType, NotificationsWatcher
-from zwemulator.lib.values import ValueGenre, ValueType #, ValueID
 from zwemulator.lib.options import Options
 from zwemulator.lib.log import Log, LogLevel
 from zwemulator.lib.vers import ozw_vers_major, ozw_vers_minor, ozw_vers_revision
@@ -119,7 +116,6 @@ class Manager(object):
             else :
                 Manager.initialized = True
             cls._options = OPTIONS
-            cls._watchers = NotificationsWatcher()
             return Manager.instance        
         cls._log = Log()
         cls._log.create("",  False,  True, LogLevel.Debug , LogLevel.Debug, LogLevel.Debug)
@@ -345,14 +341,6 @@ class Manager(object):
                 listN.append(n.nodeId)
         return listN
     
-    def Addwatcher(self, libnotification,  pycallback):
-        if self._watchers.addWatcher(libnotification, pycallback):
-            self._log.write(LogLevel.Always, self, "Adding a watcher to {0}".format(pycallback))
-            return True
-        else :
-            self._log.write(LogLevel.Warning, self, "Watcher {0} all ready exist, not Adding".format(pycallback))
-            return False
-
     def startDriver(self, homeId):
         if self.checkVirtualCom(homeId) :
             serialport = self.zwNetworks[homeId]['configData']['virtualcom']['ports']['emulator'] 
@@ -377,13 +365,6 @@ class Manager(object):
             if homeId == driver.homeId : return driver
         return None
     
-    def SetDriverReady(self, driver, success):
-        if success:
-            self._log.write( LogLevel.Info, self,  "     Driver with Home ID of {0} is now ready.".format(self.matchHomeID(driver.xmlData['homeId'])))
-            self._log.write( LogLevel.Info, "" );
-            notify = Notification(NotificationType.DriverReady, driver)
-            self._watchers.dispatchNotification(notify)
-
     def IsSupportedCommandClasses(self,  clsId):
         return self.cmdClassRegistered.IsSupported(clsId)
     
@@ -586,69 +567,3 @@ class Manager(object):
         
 """
 
-        
-if __name__ == "__main__":
-    
-    def notif_callback(notification, callback):
-        """
-        Notification callback to the C++ library
-
-        """
-        from libopenzwave import PyNotifications
-        
-        print 'recu dans notif_callback : {0}'.format(notification)
-        n = {'notificationType' : PyNotifications[notification.GetType()],
-             'homeId' : notification.GetHomeId(),
-             'nodeId' : notification.GetNodeId(),
-    #         'context' : "%s" % (<object>_context),
-             }
-        if notification.GetType() == NotificationType.Group:
-            n['groupIdx'] = notification.GetGroupIdx()
-        elif notification.GetType() == NotificationType.NodeEvent:
-            n['event'] = notification.GetEvent()
-        elif notification.GetType() == NotificationType.Notification:
-            n['notificationCode'] = NotificationType.notification.GetNotification()
-        elif notification.GetType() in (NotificationType.CreateButton, NotificationType.DeleteButton, NotificationType.ButtonOn, NotificationType.ButtonOff):
-            n['buttonId'] = notification.GetButtonId()
-        elif notification.GetType() == NotificationType.SceneEvent:
-            n['sceneId'] = notification.GetSceneId()
-        addValueId(notification._obj, n)
-        #logging.debug("++++++++++++ libopenzwave.notif_callback : notification %s" % n)
-        callback(n)
-    
-    def addValueId(obj, n):
-#        v = ValueID(v)
-        n['valueId'] = {'homeId' : obj.homeId,
-                        'nodeId' : obj.nodeId,
-                        'commandClass' :obj.GetClassInformation()['name'],
-                        'instance' : obj.instance,
-                        'index' : obj.index,
-                        'id' : obj.GetId(),
-                        'genre' : ValueGenre().getFromVal(obj.genre),
-                        'type' :  ValueType().getFromVal(obj.type),
-                        'value' : obj.getVal(), 
-                        'label' : obj.label,
-                        'units' : obj.units,
-                        'readOnly': obj.readOnly  #manager.IsValueReadOnly(v),
-                        }
-    
-    class API :
-        def pyCallback(self,  notification):
-            print 'recu dans le callback : {0}'.format(notification)
-    print "************** start in main of manager.py **************"
-    OPTIONS.create("../openzwave/config", "", "--logging true --LogFileName test.log")
-    print "NotifyTransactions :", OPTIONS.AddOptionBool('NotifyTransactions',  True)
-    OPTIONS.Lock()
-    manager = Manager()
-    manager.Create()
-    
-    import time
-    while True and not manager._stop.isSet():
-        try :
-            time.sleep(.01)
-        except KeyboardInterrupt:
-            manager._stop.set()
-    for driver in manager.drivers:
-        driver.running = False
-#    notify = Notification(NotificationType.ValueAdded, value)
-#    manager._watchers.dispatchNotification(notify)

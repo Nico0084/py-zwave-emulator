@@ -34,10 +34,7 @@ along with py-zwave-emulator. If not, see http:#www.gnu.org/licenses.
 
 """
 
-#from ozwdefs import *
-#import libopenzwave
 from xml.dom import minidom
-#import json
 import sys
 
 class OZwaveConfigException(Exception):

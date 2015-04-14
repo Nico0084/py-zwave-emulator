@@ -34,15 +34,10 @@ along with py-zwave-emulator. If not, see http:#www.gnu.org/licenses.
 
 """
 
-#from libc.stdint cimport uint32_t, uint64_t, int32_t, int16_t, uint8_t, int8_t
-#from mylibc cimport string
-#from libcpp cimport bool
 from zwemulator.lib.defs import *
 from zwemulator.lib.log import LogLevel
-from zwemulator.lib.notification import Notification, NotificationType
 from ctrlemulator import OZWSerialEmul
 import time
-import copy
 import threading
 
 class ControllerInterface(EnumNamed):       # Specifies the controller's hardware interface 
@@ -278,12 +273,8 @@ class Driver:
             self._log.write(LogLevel.Info, self, "     Node %03d - New"% nodeId)
             node = self._manager.getNode(self.homeId,  nodeId)
             if node :
-                notify =  Notification(NotificationType.NodeNew, node);
-                self._manager._watchers.dispatchNotification(notify)
                 node.initSequence()
                 self.InitNode(node.nodeId,  True)
-                notify =  Notification(NotificationType.NodeAdded, node);
-                self._manager._watchers.dispatchNotification(notify)
             else : print "loadNodes error with nodeId {0}".format(nodeId)
             
 #        for nodeId in nodes:
@@ -514,14 +505,9 @@ class Driver:
             # Remove the original node
             node = self.m_nodes[_nodeId]
             del (self.m_nodes[_nodeId])
-            notify =  Notification(NotificationType.NodeRemoved, node)
-            self._manager._watchers.dispatchNotification(notify)
         # Add the new node
         self.m_nodes[_nodeId] = self.GetNode(_nodeId)
         if newNode == True : self.m_nodes[_nodeId].SetAddingNode()
-#        ReleaseNodes()
-        notify =  Notification(NotificationType.NodeAdded, self.m_nodes[_nodeId])
-        self._manager._watchers.dispatchNotification(notify)
         # Request the node info
         self.m_nodes[_nodeId].SetQueryStage(QueryStage.ProtocolInfo)
         self._log.write(LogLevel.Info,  "Initilizing Node. New Node: {0} ({1})".format(self.m_nodes[_nodeId].IsAddingNode, newNode))

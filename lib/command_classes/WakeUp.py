@@ -35,7 +35,6 @@ along with py-zwave-emulator. If not, see http:#www.gnu.org/licenses.
 """
 
 from zwemulator.lib.defs import *
-from zwemulator.lib.notification import Notification, NotificationType
 from zwemulator.lib.log import LogLevel
 from zwemulator.lib.driver import MsgQueue, Msg
 from commandclass import CommandClass
@@ -174,9 +173,6 @@ class WakeUp(CommandClass):
         if self.m_awake != _state:
             self.m_awake = _state
             self._log.write(LogLevel.Info, self._node, "  Node {0} has been marked as {1}".format(self.nodeId, "awake" if self.m_awake else "asleep"))
-            notification = Notification(NotificationType.Type_Notification, self)
-            notification.SetNotification(NotificationCode.Awake if self.m_awake else NotificationCode.Sleep)
-            self._node._manager._watchers.dispatchNotification(notification)
         if self.m_awake :
             # If the device is marked for polling, request the current state
             if self.m_pollRequired:

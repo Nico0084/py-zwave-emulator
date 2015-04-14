@@ -41,7 +41,6 @@ along with py-zwave-emulator. If not, see http:#www.gnu.org/licenses.
 #def extern from "Node.h" namespace "OpenZWave::Node":
 from zwemulator.lib.defs import *
 from zwemulator.lib.values import *
-from zwemulator.lib.notification import Notification, NotificationType
 from zwemulator.lib.log import LogLevel
 from zwemulator.lib.driver import MsgQueue, Msg
 from zwemulator.lib.command_classes.commandclass import CommandClass
@@ -369,8 +368,6 @@ class Node:
                         self.m_queryStage = QueryStage.Static
                         m_queryRetries = 0
                         self._log.write(LogLevel.Info, self, "Essential node queries are complete")
-                        notification = Notification(NotificationType.EssentialNodeQueriesComplete, self)
-                        self._manager._watchers.dispatchNotification(notify)
                     break
                 elif self.m_queryStage ==  QueryStage.Static:
                     # Request any other static values associated with each command class supported by this node
@@ -439,7 +436,6 @@ class Node:
                     addQSC = self.m_queryPending
                     if not self.m_queryPending:
                         self.m_queryStage = QueryStage.Configuration
-                        m_queryRetries = 0
                     break
                 elif self.m_queryStage ==  QueryStage.Configuration:
                     # Request the configurable parameter values from the node.
@@ -456,8 +452,6 @@ class Node:
                 elif self.m_queryStage ==  QueryStage.Complete:
                     # Notify the watchers that the queries are complete for this node
                     self._log.write(LogLevel.Detail, self, "QueryStage_Complete")
-                    notify = Notification(NotificationType.NodeQueriesComplete, self)
-                    self._node._manager._watchers.dispatchNotification(notify)
                     # Check whether all nodes are now complete
                     self.GetDriver.CheckCompletedNodeQueries()
                     return
@@ -547,9 +541,6 @@ class Node:
     
     def SetNodeName(self, name):
         self.name = name
-        # Notify the watchers of the name changes
-        notification = Notification(NotificationType.NodeNaming, self)
-        self._node._manager._watchers.dispatchNotification(notify)
         cc = self.GetCommandClass(self._manager.GetCommandClassId('COMMAND_CLASS_NODE_NAMING'))
         if cc :
             # The node supports naming, so we try to write the name into the device
@@ -557,9 +548,6 @@ class Node:
         
     def SetLocation(self, name):
         self.location = name
-        # Notify the watchers of the name changes
-        notification = Notification(NotificationType.NodeNaming, self)
-        self._node._manager._watchers.dispatchNotification(notify)
         cc = self.GetCommandClass(self._manager.GetCommandClassId('COMMAND_CLASS_NODE_NAMING'))
         if cc :
             # The node supports naming, so we try to write the name into the device
@@ -696,7 +684,6 @@ class Node:
         return 0
         
     def GetClassIdInformation(self, commandClassId):
-#        import libopenzwave
         for clss in self._cmdsClass :
             if commandClassId == clss.id:
                 return {'name' : clss.name ,  'version': clss.m_version,  'id': clss.id}
@@ -880,8 +867,6 @@ class Node:
                     reportedClasses = True
             if not reportedClasses: self._log.write(LogLevel.Info, self, "    None")
             self._log.write(LogLevel.Detail, self, "Query Stage Complete (ProtocolInfo)")
-            notify = Notification(NotificationType.NodeProtocolInfo, self)
-            self._manager._watchers.dispatchNotification(notify)
             self.UpdateNodeInfo()
 
     def SetMapping(self, basicMapping):
@@ -953,7 +938,6 @@ class Node:
     def GetDeviceClasses(self):
         basic = self._manager._DeviceClass.getBasic(self.basic)
         retInfos = ["Basic device class    ({0}) - {1}".format(basic['key'], basic['label'])]
-        basicMapping = self.GetBasicMapping()               # Get the command class that COMMAND_CLASS_BASIC maps to.
         generic = self._manager._DeviceClass.getGeneric(self.generic)
         if generic is not None :
             retInfos.append("Generic device Class  ({0}) - {1}".format(generic['key'], generic['label']))
