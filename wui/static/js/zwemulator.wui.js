@@ -1,4 +1,24 @@
 
+function renderCmdClssName(data, type, full, meta) {
+    try {
+        var exData = JSON.parse(data);
+        var exState= JSON.parse(full.Extra_State);
+        }
+    catch (err) {
+        console.log(err);
+        return 'No Data'
+        };
+    var cell = $("#refclss-"+ exState.vid);
+    var extraparams = JSON.parse($(cell).attr("extraparams"));
+    var extraP = '';
+    if (extraparams != null) {
+        extraP = '<button id="extP'+ exState.vid + '" cid="'+ exData.id + '" type="button" class="btn btn-default btn-xs btn-info" aria-label="Left Align"> ' +
+                    '<span class="glyphicon glyphicon-cog" aria-hidden="true"></span>' +
+                    '</button>'
+    }
+    return exData.name + extraP
+};
+
 function renderCmdClssNode(data, type, full, meta) {
     try {
         var exData = JSON.parse(data);

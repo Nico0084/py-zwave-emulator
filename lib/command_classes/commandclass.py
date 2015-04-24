@@ -46,6 +46,24 @@ c_scaleShift		= 0x03
 c_precisionMask	= 0xe0
 c_precisionShift	= 0x05
 
+
+class CommandClassException(Exception):
+    """"Zwave Manager exception  class"""
+            
+    def __init__(self, value, cmdClass = None):
+        Exception.__init__(self, value)
+        self.value = value
+        self._cmdClass = cmdClass
+        
+    def __str__(self):
+        """Return the object representation
+        @return value of the exception
+        """
+        if self._cmdClass is not None :
+            return repr("{0} exception: {1}".format(self._cmdClass.GetCommandClassName, self.value))
+        else :  return repr("CMD_CLSS_NOT_DECLARED exception: {0}".format(self.value))
+
+
 class CommandClass:
     """Base of commandClass, group all methodes of spécific command class to emulate behavior."""
     
@@ -78,11 +96,29 @@ class CommandClass:
         self.ignoremapping = data['ignoremapping'] if 'ignoremapping' in data else False
         self.mandatory = False
         self.ozwAdded = False # Added by openzwave for internal use
+        self.extraParams = {}# In case of other parameters needed for simulation, this parameters are repported  to WUI for setting.
+                                      # Dict who first element "0" is the description of parameters définition and others index parameters for instances.
+                                      # format : { 0: { keyParam1 : {'name': "My foo Nane", 'values' : <list of possible value >},
+                                      #                     keyParamX : {'name': "My foo Nane", 'values' : <list of possible value >},
+                                      #                  .......
+                                      #                    }, 
+                                      #                1 : < num instance >
+                                      #                   {'keyParam1' : < value of instance 1 >,
+                                      #                    'keyParamX' : < value of instance 1 >,
+                                      #                     .......
+                                      #                    }, 
+                                      #                x : < num instance >
+                                      #                    {'keyParam1' : < value of instance Y >,
+                                      #                     'keyParamX' : < value of instance Y >,
+                                      #                     .......
+                                      #                    }
+                                      #              } 
         
     _log = property(lambda self: self._node._log)
     _stop = property(lambda self: self._node._manager._stop)
     homeId = property(lambda self: self._node.homeId)
     nodeId = property(lambda self: self._node.nodeId)
+    nodeRef = property(lambda self: self._node.nodeRef)
     GetDriver = property(lambda self: self._node._manager.GetDriver(self.homeId))
     reportCmd = property(lambda self: 0)
     getCmd = property(lambda self: 0)
@@ -93,7 +129,102 @@ class CommandClass:
         
     def getFullNameCmd(self,  _id):
         return "BaseCommandClass.NoCmd"
-    
+        
+    def getDefExtraParams(self, js = False):
+        """ Can be overwritten if command class use some extra parameters and handle other key than extra primary definition
+            Return : definiton of extra parameters, index 0 from self.extraParams.
+        """
+        if self.extraParams : 
+            if not js :
+                return self.extraParams[0]
+            else :
+                params = {}
+                for p in self.extraParams[0] :
+                    params[p]={}
+                    for k, x in self.extraParams[0][p].iteritems():
+                         params[p].update({k:  str(x)})
+                return params
+        return None
+        
+    def getInstanceExtraParams(self,  instance, js = False):
+        """ Can be overwritten if command class use some extra parameters and handle other key than extra primary definition
+            Return : extra parameters of an instance, index = instance from self.extraParams.
+        """
+        params = None
+        if self.extraParams : 
+            try :
+                if not js :
+                    params = self.extraParams[instance]
+                else :
+                    params = {}
+                    for k in self.extraParams[instance] : params[k] = str(self.extraParams[instance][k])  
+            except :
+                raise CommandClassException("getInstanceExtraParams, can't extra extra params for instance {0} : {1}".format(instance, self.extraParams),  self)
+                params = None
+        return params
+        
+    def setInstanceExtraParams(self,  instance, params):
+        """ Can be overwritten if command class use some extra parameters and handle other key than extra primary definition
+            Return : True if set or add else False.
+        """
+        defParams = self.getDefExtraParams()
+        if defParams is not None :
+            if self.validateExtraParams(params) :
+                self.extraParams[instance] = params
+                return True
+            self._log.write(LogLevel.Error, self, "setInstanceExtraParams, invalid extra params for instance {0} : {1}".format(instance, params))
+        else :
+            raise CommandClassException("setInstanceExtraParams, extra params not defined.",  self)
+        return False
+
+    def delInstanceExtraParams(self,  instance):
+        """ Can be overwritten if command class use some extra parameters and handle other key than extra primary definition
+            Return : True if deleted else False.
+        """
+        defParams = self.getDefExtraParams()
+        if defParams is not None :
+            if instance in self.extraParams : 
+                del(self.extraParams[instance])
+                return True
+        return False
+
+    def validateExtraParams(self,  params):
+        """ Can be overwritten if command class use some extra parameters and handle other key than extra primary definition
+            Return : extra parameters of an instance, index = instance from self.extraParams.
+        """
+        defParams = self.getDefExtraParams()
+        valid = True
+        if defParams is not None :
+            for p in  params :
+                if p in defParams :
+                    if not self.validateValExtraParam(params[p],  defParams[p]) :
+                        valid = False
+                        break
+                else :
+                    valid = False
+                    break
+            return valid
+        else :
+            raise CommandClassException("validateExtraParams, extra params not defined.",  self)
+            return False
+
+    def validateValExtraParam(self, val,  defParam):
+        """ Can be overwritten if command class use some extra parameters and must handle other key than extra primary definition
+            Return : True if value is a valid value in param['values'] else False.
+            val can be a value of param['values'] or index of that list.
+        """
+        valid = False
+        try :
+            defParam['values'].index(val)
+            valid = True
+        except :
+            try :
+                valid = defParam['values'][val]
+                valid = True
+            except :
+                pass
+        return valid
+        
     def HasStaticRequest(self, _request):
         return True if (self.m_staticRequests & _request) != 0 else False
         

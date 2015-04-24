@@ -11,7 +11,7 @@ app.secret_key = 'zwave-emulator-python'
 
 from views.index import *
 from views.virtualnodes import *
-
+from views.virtualcmdclss import *
 
 app.jinja_env.filters['renderCmdClssGeneric'] = renderCmdClssGeneric
 app.jinja_env.add_extension('jinja2.ext.do')

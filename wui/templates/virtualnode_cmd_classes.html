@@ -100,7 +100,9 @@
                             {% if clssValues|length > 0 %}
                                 {% for v in clssValues %}
                                     <tr>
-                                        <td>{{ clss.GetCommandClassName }}</td>
+                                        <td id="refclss-{{v.GetId()}}" extraparams='{{ clss.getInstanceExtraParams(v.instance, True)|tojson}}' defparams='{{ clss.getDefExtraParams(True)|tojson}}'>
+                                            {"id": "{{clss.GetCommandClassId }}", "name": "{{clss.GetCommandClassName }}"}
+                                        </td>
                                         <td>{{ v.instance }}</td>
                                         <td>{{ v.index }}</td>
                                         <td>{{ v.GetGenre }}</td>
@@ -285,7 +287,11 @@ $(document).ready( function () {
         "order": [[ 0, "asc" ]],
         "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "All"]],
         "info": true,
-        "columnDefs": [ {
+        "columnDefs": [{
+            "targets": 0,
+            "data": "Extra_Name",
+            "render": function (data, type, full, meta) {return renderCmdClssName(data, type, full, meta);}
+          }, {
             "targets": 8,
             "data": "Extra_State",
             "render": function (data, type, full, meta) {return renderCmdClssNode(data, type, full, meta);}
@@ -296,6 +302,7 @@ $(document).ready( function () {
             vTable = this;
             $.each(data, function(rowV, vData) {
                 try {
+                    // Activate Polling value if necessary.
                     var exData = JSON.parse(vData.Extra_State);
                     var vId = exData["vid"];
                     var qPoll = $('#vpoll' + vId);
@@ -342,7 +349,9 @@ $(document).ready( function () {
                                         autospin: false,
                                         callback: function(dialogRef){    
                                         // Submit form
-                                            console.log("Set checkbox value : " + exData.polled + ", intensity :  " + exData.pollintensity);
+                                            var intensity = $('#pollintensity').val();
+                                            var polled = $('#polled').is(':checked');
+                                            console.log("Set checkbox value : " + polled + ", intensity :  " + intensity);
                                          //   setPollingValue(vTable, vData[nodeid], values.valueid, values.polled == 'True', values.intensity);
                                          //   dialogRef.close();
                                         } 
@@ -357,27 +366,125 @@ $(document).ready( function () {
                                          //   setPollingValue(vTable, vData[nodeid], values.valueid, values.polled == 'True', values.intensity);
                                           //  dialogRef.close();
                                         }
-                                   // button: "#poll" + vId,
-                                   // data: {polled: $('#poll' + vId).is(':checked'), intensity : intensity, valueid: vId},
                                     }]
                                 });
-                             //   $('#valueid').hide();
-                               // $('#tipsSetPollt').html("<br>" + getValueTabCmdClass(vTable, vData, 'commandClass') + " -> " + getValueTabCmdClass(vTable, vData, 'label'));
-                               // $('#intensity').val(intensity);
-                             /*   if ($('#vpoll' + vId).is(':checked')) {
-                                    $('#vpoll' + vId).removeAttr('checked');
-                                    $('#polled').removeAttr('checked');
-                                } else {
-                                    $('#vpoll' + vId).attr('checked', 'checked');
-                                    $('#vpolled').attr('checked', 'checked');
-                                };*/
                                 console.log("click checkbox value : " + this.id + "  " + vId);
                                 };
                                 }); 
                         };
-                    }
-                    catch (err) {
-                        console.log(err);
+                    // Activate cmd clss extra parameters if necessary.
+                    var exName = JSON.parse(vData.Extra_Name);
+                    var cId = exName.id;
+                    var qExtraP = $("#extP" + exData.vid);
+                    if (qExtraP.length == 1) {
+                        if (qExtraP.attr('isHandled') === undefined) {
+                            qExtraP.attr('isHandled',true);
+                            qExtraP.click(function(e){
+                                var cId = $(this).attr("cid");
+                                var vId = this.id.slice(4);
+                                var exName = {};
+                                var datas = api.rows({page:'current'}).data();
+                                var find = false;
+                                for (var i in datas) {
+                                    try {
+                                        exName = JSON.parse(datas[i].Extra_Name);
+                                        exState = JSON.parse(datas[i].Extra_State);
+                                        if ((exState.vid == vId) && (exName.id == cId)) {
+                                            var vData = datas[i]
+                                            find = true;
+                                            break };
+                                    }
+                                    catch (err) {};
+                                    };
+                                if (find) {
+                                    var cell = $("#refclss-"+ vId);
+                                    var extraparams = JSON.parse($(cell).attr("extraparams"));
+                                    var defparams = JSON.parse($(cell).attr("defparams"));
+                                    var render = "";
+                                    for (dP in defparams) {
+                                        values = eval(defparams[dP].values);
+                                        render += '<div class="text"> <label for="v-'+dP+'"> ' + defparams[dP].name + '</label>'
+                                        render += '<select class="form-control" id="v-'+dP+'">'
+                                        for (var v=0; v < values.length; v++) {
+                                            render += '<option value="'+ v +'"';
+                                            for (p in extraparams) {
+                                                if ((p == dP) && (parseInt(extraparams[p]) == v)) {
+                                                    render += 'selected="true"';
+                                                    break;
+                                                };
+                                            };
+                                            render += '>' + values[v] + '</option>'
+                                        };
+                                        render += '</select></div><br>'
+                                    };
+                                    bootbox.dialog({
+                                        title: "Setting extra parameters<br>"+exName.name+", instance "+vData[1]+", node {{ node.nodeId }} ",
+                                        message: "<div class='col-md-12'> " +
+                                                    "<form class='form-horizontal'> "+
+                                                        "<p> Select extra parameters values. Saving configuration is necessary to keep change.</p><br>" +
+                                                        render +
+                                                    "</form> </div>",
+                                        data: {'pData' : extraparams},
+                                        buttons: [{
+                                            id: 'btn-ok',   
+                                            icon: 'glyphicon glyphicon-check',       
+                                            label: 'OK',
+                                            className: 'btn-primary', 
+                                            autospin: false,
+                                            callback: function(dialogRef){    
+                                            // Submit form
+                                                var newParams = {};
+                                                $("[id^='v-']").each(function (index, param) {
+                                                    newParams[param.id.slice(2)] = parseInt($(param).val());
+                                                });
+                                                console.log("Set extra parameter value : " + exName.name + ", params :  " + JSON.stringify(newParams));
+                                                $.getJSON('/virtualnodes/{{ node_ref }}/'+exName.id+'/update_extra_params', {
+                                                      extraP: JSON.stringify(newParams),
+                                                      instance: vData[1]
+                                                    }, function(data, result) {
+                                                        console.log("Retour de update_extra_params :" + JSON.stringify(data));
+                                                        if (data.result == 'error') {
+                                                            new PNotify({
+                                                                    type: 'error',
+                                                                    title: 'Invalid input',
+                                                                    text: data.msg,
+                                                                    delay: 6000
+                                                            });
+                                                        } else {
+                                                            $("[id^='refclss-']").each(function (index, param) {
+                                                                if ($(this.children[0]).attr("cid") == cId) {
+                                                                  $(this).attr("extraparams", JSON.stringify(newParams));
+                                                                };
+                                                            });
+                                                            $("[id^='refclss-'] :hidden").each(function (index, param) {
+                                                                if ($(this.children[0]).attr("cid") == cId) {
+                                                                  $(this).attr("extraparams", JSON.stringify(newParams));
+                                                                };
+                                                            });
+                                                        };
+                                                    });
+                                             //   dialogRef.close();
+                                            } 
+                                            }, {
+                                            id: 'btn-cancel',   
+                                            label: 'Cancel',
+                                            className: 'btn-danger', 
+                                            autospin: false,
+                                            callback: function(dialogRef){    
+                                            // Submit form
+                                                console.log("Cancel edit extra parameter : " + exData.name + ", params :  " + extraparams);
+                                             //   setPollingValue(vTable, vData[nodeid], values.valueid, values.polled == 'True', values.intensity);
+                                              //  dialogRef.close();
+                                            }
+                                        }]
+                                    });
+                                };
+                            });
+                        };
+                    };
+                }
+                catch (err) {
+                    console.log(err);
                     };                            
                 });
             }

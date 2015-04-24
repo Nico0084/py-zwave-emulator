@@ -35,21 +35,31 @@
             "failed" : false,
             "timeoutwakeup" : 0,
             "wakeupduration" : 0,
-            "pollingvalues" : []
+            "pollingvalues" : [],
+            "cmdclssextraparams" : {}
         },{
             "nodeid" : 4,
             "comment" : "KFOB",
             "failed" : false,
-            "timeoutwakeup" : 110,
+            "timeoutwakeup" : 20,
             "wakeupduration" : 15,
-            "pollingvalues" : []
+            "pollingvalues" : [],
+            "cmdclssextraparams" : {
+                    "COMMAND_CLASS_SWITCH_MULTILEVEL" : {
+                        "1" : {
+                            "switchtype1" : 1, 
+                            "switchtype2" : 2
+                            }
+                        }
+                    }
         },{
             "nodeid" : 6,
             "comment" : "HSM02 - 1",
             "failed" : false,
             "timeoutwakeup" : 60,
             "wakeupduration" : 5,
-            "pollingvalues" : []
+            "pollingvalues" : [],
+            "cmdclssextraparams" : {}
         },{
             "nodeid" : 7,
             "comment" : "Home Energy Meter",
@@ -106,7 +116,8 @@
                             },
                         "unable" : false
                     }
-                ]
+                ],
+            "cmdclssextraparams" : {}
         },{
             "nodeid" : 8,
             "comment" : "Infrared detector",
@@ -151,14 +162,16 @@
                             },
                         "unable" : true
                     }                    
-                ]
+                ],
+            "cmdclssextraparams" : {}
         },{
             "nodeid" : 9,
             "comment" : "HSM02 - 2",
             "failed" : false,
             "timeoutwakeup" : 170,
             "wakeupduration" : 5,
-            "pollingvalues" : []
+            "pollingvalues" : [],
+            "cmdclssextraparams" : []
         },{
             "nodeid" : 10,
             "comment" : "FGS211 Switch - Kitchen",
@@ -178,56 +191,64 @@
                             },
                         "unable" : false
                     }
-                ]
+                ],
+            "cmdclssextraparams" : {}
         },{
             "nodeid" : 11,
             "comment" : "FGS221 Double Switch - 1",
             "failed" : false,
             "timeoutwakeup" : 0,
             "wakeupduration" : 0,
-            "pollingvalues" : []
+            "pollingvalues" : [],
+            "cmdclssextraparams" : {}
         },{
             "nodeid" : 13,
             "comment" : "AN158 Plug-in Meter Switch",
             "failed" : false,
             "timeoutwakeup" : 0,
             "wakeupduration" : 0,
-            "pollingvalues" : []
+            "pollingvalues" : [],
+            "cmdclssextraparams" : {}
         },{
             "nodeid" : 14,
             "comment" : "FGWPE Wall Plug",
             "failed" : false,
             "timeoutwakeup" : 0,
             "wakeupduration" : 0,
-            "pollingvalues" : []
+            "pollingvalues" : [],
+            "cmdclssextraparams" : {}
         },{
             "nodeid" : 18,
             "comment" : "ST814 Temperature and Humidity Sensor",
             "failed" : false,
             "timeoutwakeup" : 120,
             "wakeupduration" : 10,
-            "pollingvalues" : []
+            "pollingvalues" : [],
+            "cmdclssextraparams" : {}
         },{
             "nodeid" : 19,
             "comment" : "SF812 Smoke Alarm",
             "failed" : false,
             "timeoutwakeup" : 100,
             "wakeupduration" : 5,
-            "pollingvalues" : []
+            "pollingvalues" : [],
+            "cmdclssextraparams" : {}
         },{
             "nodeid" : 20,
             "comment" : "FGS221 Double Relay Switch - 2",
             "failed" : false,
             "timeoutwakeup" : 0,
             "wakeupduration" : 0,
-            "pollingvalues" : []
+            "pollingvalues" : [],
+            "cmdclssextraparams" : {}
         },{
             "nodeid" : 21,
             "comment" : "FGS211 Switch - pool",
             "failed" : true,
             "timeoutwakeup" : 0,
             "wakeupduration" : 0,
-            "pollingvalues" : []
+            "pollingvalues" : [],
+            "cmdclssextraparams" : {}
         }
     ]
 }

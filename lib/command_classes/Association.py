@@ -46,7 +46,7 @@ class AssociationCmd(EnumNamed):
 	Remove			= 0x04
 	GroupingsGet		= 0x05
 	GroupingsReport	= 0x06
-    
+
 class Association(CommandClass):
     
     StaticGetCommandClassId = 0x85
@@ -56,8 +56,6 @@ class Association(CommandClass):
         CommandClass.__init__(self, node, data)
         self.m_numGroups = data['associations']['num_groups']
         self.groups = data['associations']['groups']
-        print "*********** class Association ********************"
-        print data
     
     GetCommandClassId = property(lambda self: self.StaticGetCommandClassId)
     GetCommandClassName = property(lambda self: self.StaticGetCommandClassName)

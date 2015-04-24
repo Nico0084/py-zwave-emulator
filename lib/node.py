@@ -164,6 +164,7 @@ class Node:
 
     _log = property(lambda self: self._manager._log)
     _stop = property(lambda self: self._manager._stop)
+    nodeRef = property(lambda self: "{0}.{1}".format(GetDataAsHex(self.homeId, 8), self.nodeId))
     commandClassId  = property(lambda self: 0x00) # 'COMMAND_CLASS_NO_OPERATION' 
     instance = property(lambda self: 0)
     index = property(lambda self: 0)
@@ -573,6 +574,17 @@ class Node:
         if newCmdClss is not None :
             if ozwAdded: newCmdClss.ozwAdded = True
             self._cmdsClass.append(newCmdClss)
+            if self.emulData["cmdclssextraparams" ] :
+                for cmdClss in self.emulData["cmdclssextraparams" ] :
+                    if cmdClss == newCmdClss.GetCommandClassName :
+                        if newCmdClss.getDefExtraParams() is not None :
+                            for instance in self.emulData["cmdclssextraparams"][cmdClss] :
+                                if newCmdClss.setInstanceExtraParams(instance, self.emulData["cmdclssextraparams"][cmdClss][instance]):
+                                    self._log.write(LogLevel.Detail, self, "Extra parameters {0} loaded for instance {1} : {2}".format(newCmdClss.GetCommandClassName, instance, self.emulData["cmdclssextraparams"][cmdClss][instance]))
+                                else :
+                                    self._log.write(LogLevel.Warning, self, "Error on loading extra parameters for {0} instance {1} : {2}".format(newCmdClss.GetCommandClassName, instance, self.emulData["cmdclssextraparams"][cmdClss][instance]))
+                        else :
+                            self._log.write(LogLevel.Warning, self, "Config emul file set extra parameters for {0}, but extra params not defined for that cmdclss".format(newCmdClss.GetCommandClassName))
         else : 
             print "Error, can't create command class {0}, Not registered.".format(clssData)
 

@@ -64,12 +64,17 @@ def shutdown_server():
 if __name__ == '__main__':
     print "************** Start in main zwemulator.py **************"
     OPTIONS.create("../openzwave/config", "", "--logging true --LogFileName test.log")
-    print "NotifyTransactions :", OPTIONS.AddOptionBool('NotifyTransactions',  True)
     OPTIONS.Lock()
     manager = Manager()
     try :
         manager.paramsConfig = readJsonFile('../data/config_emulation.json')
         print "Config parameters loaded : {0}".format(manager.paramsConfig)
+    except:
+        if manager is not None : manager._stop.set()
+        for driver in manager.drivers:
+            driver.running = False
+        print "No correct file config for emulation in data path. EXIT"
+    else :
         host = manager.paramsConfig['webui']['host']
         port = manager.paramsConfig['webui']['port']
         wuiApp = Thread(None, joinwui, "th_wui_zwave_ctrl_emulator", (), {'manager':manager})
@@ -80,5 +85,3 @@ if __name__ == '__main__':
         manager._stop.set()
         for driver in manager.drivers:
             driver.running = False
-    except:
-        print "No correct file config for emulation in data path. EXIT"

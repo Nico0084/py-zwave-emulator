@@ -247,12 +247,12 @@ class Manager(object):
         for f in files:
             if re.match(xmlFormat,  f) is not None :
                 if f not in self.zwNetworks :
+                    self._log.write(LogLevel.Always, self, "Find and loading {0} openzwave file config....".format(dataDir + "/" + f))
                     xmlData = self.readXmlNetwork(dataDir + "/" + f)
                     driverData = xmlData.getDriver(0)
                     homeId = driverData['homeId']
                     self.zwNetworks[homeId] = {'xmlData': self.readXmlNetwork(dataDir + "/" + f)}
                     configFile = f.replace('xml', 'json')
-                    self._log.write(LogLevel.Always, self, " Loading {0} openzwave file config....".format(dataDir + "/" + f))
                     try : 
                         self.zwNetworks[homeId]['configData'] = readJsonFile(dataDir + "/" +  configFile)
                         self._log.write(LogLevel.Always, self,"Config for emulation loaded : {0}".format(self.zwNetworks[homeId]['configData']))
@@ -304,7 +304,8 @@ class Manager(object):
                     "failed" : False,
                     "timeoutwakeup" : 0,
                     "wakeupduration" : 0,
-                    "pollingvalue" : []
+                    "pollingvalue" : [], 
+                    "cmdclssextraparams" : {}
                   }
         
     def matchHomeID(self, homeId):

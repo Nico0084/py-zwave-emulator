@@ -384,9 +384,13 @@ def getFuncName(func):
 def GetDataAsHex(data, nChar = 2):
     strVal = ""
     baseStr = "0x%.{0}x".format(nChar)
-    for i in range(0, len(data)) :
-        if i : strVal += ", "
-        strVal += baseStr%data[i]
+    if type(data) in [list, tuple] :
+        for i in range(0, len(data)) :
+            if i : strVal += ", "
+            strVal += baseStr%data[i]
+    else : 
+        print "**********", type(data), data,  baseStr
+        strVal = baseStr%data
     return strVal
 
 def readJsonFile(file):

@@ -84,6 +84,7 @@ from UserCode import UserCode
 from Version import Version
 from WakeUp import WakeUp
 
+from zwemulator.lib.log import LogLevel
 from zwemulator.lib.defs import *
 
 class CommandClasses:
@@ -192,8 +193,7 @@ class CommandClasses:
         find,  str= self._manager._options.GetOptionAsString( "Exclude")
         if str != "":
             cc.ParseCommandClassOption( str, False)
-            
-        print "supported class : ",  self.m_supportedCommandClasses
+        self._manager._log.write(LogLevel.Debug, self._manager, "Supported command classes : {0}".format(GetDataAsHex(self.m_supportedCommandClasses)))
 
     def ParseCommandClassOption(self, _optionStr, _include):
         """Parse a comma delimited list of included/excluded command classes"""
