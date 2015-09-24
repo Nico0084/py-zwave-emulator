@@ -4,8 +4,8 @@
 <div class="container">
 
 
-    <button type="button" id="install_a_plugin" class="btn btn-primary" data-toggle="modal" data-target="#create_node">
-      <span class='glyphicon glyphicon-download-alt' aria-hidden='true'></span>Créer un Noeud
+    <button type="button" id="create_new_node" class="btn btn-primary" data-toggle="modal" data-target="#create_node">
+      <span class='glyphicon glyphicon-download-alt' aria-hidden='true'></span> Create a node
     </button>
     
     <!-- Modal -->
@@ -14,32 +14,71 @@
         <div class="modal-content">
           <div class="modal-header">
             <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
-            <h4 class="modal-title" id="myModalLabel">Comment créer un noeud zwave</h4>
+            <h4 class="modal-title" id="myModalLabel">Creating virtual device</h4>
           </div>
           <div class="modal-body">
-            <p>In the current release, you can't install plugins directly from this administration interface..</p>
-            <p>You will have to install a plugin from a command line, thanks to the command :</p>
-            <pre>dmg_install --install http://somewhere.com/aplugin.zip</pre>
-            <p>You will be able to find the plugins in the Domogik packages online repository : </p>
-            <a href="http://repo-public.domogik.org/">http://repo-public.domogik.org/</a>
+            <p>Create a new virtual node by copy one who must be include in a network (controller)</p>
+            <label for="listNodes">Select the node source :</label>
+            <select class='form-control actdisable' id='listNodes' >
+                    <option value="" style="display: none" selected>Chose a node</option>
+                    {% for driver in listdrivers %}
+                        {% set homeID = manager.matchHomeID(driver.homeId) %}
+                        {% for node in listnodes %}
+                            {% if node.homeId ==  driver.homeId %}
+                                <option value="{{ homeID }}.{{ node.nodeId }}">{{ homeID }}.{{ node.nodeId }} - {{ node.GetProductName }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    {% endfor %}
+            </select>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-primary" data-dismiss="modal">OK</button>
+            <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+            <button id="createnode" type="button" class="btn btn-primary" data-dismiss="modal">Create</button>
           </div>
         </div>
       </div>
     </div>
 
-
-    {% if listdrivers|length > 0 %}
-      {% for driver in listdrivers %}
-        <h1>Réseaux sur le HomeID {{ manager.matchHomeID(driver.homeId) }} (Port série : {{ driver.serialport }})</h1>
+    {% set nodesToInclude = [] %}
+    {% for node in listnodes %}
+        {% if not node.IsInclude %}
+            {% if  nodesToInclude.append(node) %}{% endif %}
+        {% endif %}
+    {% endfor %}
+    {% if  nodesToInclude|length > 0 %}
+        <h1>Node not include in a network</h1>
             <div class="list-group">
                 <h2 class="list-group-item">
-                Liste des noeuds
+                Nodes list
+                <span class="badge">{{ nodesToInclude|length  }}</span>
+                </h2>
+                {% for node in nodesToInclude %} 
+                    {% if node.name %}
+                        {% set extraTxt = "%s -- "%node.name %}
+                    {% else %}
+                        {%set extraTxt = "" %}
+                    {% endif %}
+                    <li class="list-group-item">
+                    {{ node.nodeId }} -  {{ extraTxt }} {{ node.GetProductName }}
+                    <button id="include_{{ node.nodeId }}" name="{{ node.nodeId }} -  {{ extraTxt }} {{ node.GetProductName }}" type="button" class="btn btn-xs btn-primary pull-right">Inclusion</button>
+                    </li>
+                {% endfor %}
+            </div>
+    {% endif %}
+    {% if listdrivers|length > 0 %}
+      {% for driver in listdrivers %}
+        <h1>Network on HomeID {{ manager.matchHomeID(driver.homeId) }} (Serial port : {{ driver.serialport }})
+            <button type="button" id="inclusioncmd_{{ driver.homeId }}" class="btn btn-default">
+              <span id="inclusioncmdic_{{ driver.homeId }}" class='glyphicon glyphicon-cloud-upload' aria-hidden='true' value='start'></span>
+              <span id="inclusioncmdtx_{{ driver.homeId }}"> Start Inclusion Mode</span>
+            </button>
+        </h1>
+            <div class="list-group">
+                <h2 class="list-group-item">
+                Nodes list
                 <span class="badge">{{ listnodes|length }}</span>
                 </h2>
-                {% for node in listnodes %}
+                {% for node in listnodes %} 
                     {% if node.homeId ==  driver.homeId %}
                         {% if node.name %}
                             {% set extraTxt = "%s -- "%node.name %}
@@ -49,7 +88,7 @@
                         <a class="list-group-item" href="/virtualnodes/{{ manager.matchHomeID(driver.homeId) }}.{{ node.nodeId }}">
                         <span class='glyphicon glyphicon-chevron-right' aria-hidden='true'></span> 
                         {{ node.nodeId }} -  {{ extraTxt }} {{ node.GetProductName }}
-                        <span class="label label-info status status-label status-alive pull-right">initialisé</span>
+                        <span class="label label-info status status-label status-alive pull-right">Init</span>
                         </a>
                     {% endif %}
                 {% endfor %}
@@ -59,12 +98,124 @@
     {% else %}
         <div class="alert alert-warning">Pas de driver pour réseaux zwave trouvé, verifier le manager.</div>
     {% endif %}
+    
+    <!-- Modal Inclusion-->
+    <div class="modal fade" id="confirm_include_node" tabindex="-1" role="dialog" aria-labelledby="includenodelInstructions" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            <h4 class="modal-title" id="includeModalLabel">Node Inclusion</h4>
+          </div>
+          <div class="modal-body">
+            <p>Include node in a network (controller)</p>
+            <p id="nodetoinclude"></p>
+            <label for="listCtrl">Select the network :</label>
+            <select class='form-control actdisable' id='listCtrl' >
+                    <option value="" style="display: none" selected>Chose a controller</option>
+                    {% for driver in listdrivers %}
+                            {% if driver.homeId != 0 %}
+                                <option value="{{ driver.homeId }}">{{ manager.matchHomeID(driver.homeId) }} (Serial port : {{ driver.serialport }})</option>
+                            {% endif %}
+                    {% endfor %}
+            </select>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+            <button id="includenode" type="button" class="btn btn-primary" data-dismiss="modal">Inclusion</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
 </div>
 
 
 <script type="text/javascript">
   $( document ).ready(function() {
-    // Rien pour l'instant
+    $('#createnode').click(function() {
+        if ($('#listNodes').val() != "") {
+            $.getJSON('/virtualnodes/createnode/copy/' + $('#listNodes').val(), {}, function(data, result) {
+                if (data.result == 'error') {
+                    new PNotify({
+                            type: 'error',
+                            title: 'Invalid input',
+                            text: data.msg,
+                            delay: 6000
+                    });
+                } else {
+                    new PNotify({
+                        type: 'success',
+                        title: 'Node Created',
+                        text: data.msg,
+                        delay: 4000
+                    });
+                };
+            });
+        };
+    });
+    $("[id^='include_']").click(function(){
+        var nodeId = this.id.split("_")[1];
+        $('#nodetoinclude').attr('value', nodeId).text(this.name);
+        $('#confirm_include_node').modal();
+    });
+    $('#includenode').click(function() {
+        var homeId = $('#listCtrl').val();
+        var nodeId = $('#nodetoinclude').attr('value');
+        if (homeId != "") {
+            $.getJSON('/virtualnodes/includenode/' + homeId +'/' + nodeId, {}, function(data, result) {
+                if (data.result == 'error') {
+                    new PNotify({
+                            type: 'error',
+                            title: 'Invalid input',
+                            text: data.msg,
+                            delay: 6000
+                    });
+                } else {
+                    new PNotify({
+                        type: 'success',
+                        title: 'Node is include',
+                        text: data.msg,
+                        delay: 4000
+                    });
+                };
+            });
+        };
+    });
+    $("[id^='inclusioncmd_']").click(function(){
+        var homeId = this.id.split("_")[1];
+        var cmd = $("#inclusioncmdic_"+homeId).attr('value');
+        if (homeId != "") {
+            $.getJSON('/virtualnodes/inclusion/' + homeId +'/' + cmd, {'mode':'ADD_NODE_ANY'}, function(data, result) {
+                if (data.result == 'error') {
+                    new PNotify({
+                            type: 'error',
+                            title: 'Invalid input',
+                            text: data.msg,
+                            delay: 6000
+                    });
+                } else {
+                    if (cmd == 'start') {
+                        $("#inclusioncmdic_"+homeId).removeClass('glyphicon-cloud-upload').addClass('glyphicon-record');
+                        $("#inclusioncmdic_"+homeId).attr('value','stop');
+                        $("#inclusioncmd_"+homeId).removeClass('btn-default').addClass('btn-info');
+                        $("#inclusioncmdtx_"+homeId).text(' Stop inclusion mode');
+                    } else {
+                        $("#inclusioncmdic_"+homeId).removeClass('glyphicon-record').addClass('glyphicon-cloud-upload');
+                        $("#inclusioncmdic_"+homeId).attr('value','start');
+                        $("#inclusioncmd_"+homeId).removeClass('btn-info').addClass('btn-default');
+                        $("#inclusioncmdtx_"+homeId).text(' Start inclusion mode');
+                    };
+                    new PNotify({
+                        type: 'success',
+                        title: 'Controller inclusion mode',
+                        text: data.msg,
+                        delay: 4000
+                    });
+                };
+            });
+        }; 
+    });
   });
 </script>
 {% endblock %}

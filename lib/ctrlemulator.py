@@ -59,16 +59,16 @@ class OZWSerialEmul:
         self._serial.close()
         
     def formatHex(self,  data):
-        if data : return ''.join('{0:#x}, '.format(d) for d in data[0:-1]) + '{0:#x}'.format(data[-1])
+        if data : return ''.join("0x%.2x, "%d for d in data[0:-1]) + "0x%.2x"%data[-1]
         return ''
         
     def read(self):
         try :
             data = self._serial.read(256)
-            if data : 
+            if data :
                 buff = []
                 for d in data: buff.append(ord(d))
-                print "Controller receive {0} Octets [{1}] (RAW : {2})".format(len(data),  self.formatHex(buff), data)
+                print "Receive {0} Octets [{1}]".format(len(data),  self.formatHex(buff))
                 return buff
         except  serial.SerialException, e:
             print "Erreur de lecture :" , e
@@ -127,7 +127,7 @@ if __name__ == "__main__":
             for a in args :
     #                print type(a),  a.__class__.__name__
                 if a.__class__.__name__ == "Manager" : a = 'mgr'
-                elif a.__class__.__name__ == "Driver" : a = 'contrlr' 
+                elif a.__class__.__name__ == "Driver" : a = 'ctrl' 
                 elif a.__class__.__name__ == "Node" : a = 'Node%0.3d'%a.nodeId
                 elif a.__class__.__name__ == "Value" : a = 'Node%0.3d'%a.nodeId
                 msg += ", {0}".format(a)

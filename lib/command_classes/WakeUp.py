@@ -173,18 +173,6 @@ class WakeUp(CommandClass):
         if self.m_awake != _state:
             self.m_awake = _state
             self._log.write(LogLevel.Info, self._node, "  Node {0} has been marked as {1}".format(self.nodeId, "awake" if self.m_awake else "asleep"))
-        if self.m_awake :
-            # If the device is marked for polling, request the current state
-            if self.m_pollRequired:
-                if self._node is not None:
-                    self._node.SetQueryStage(QueryStage.Dynamic)
-                self.m_pollRequired = false
-            # Send all pending messages
-            self.SendPending()
-
-    def SendPending(self):
-        # The device is awake, so send all the pending messages
-        pass # TODO: à implementer...
     
     def SendWakeUp(self):
         if self.GetDriver is not None :
@@ -195,30 +183,6 @@ class WakeUp(CommandClass):
             msg.Append(self.GetCommandClassId)
             msg.Append(WakeUpCmd.Notification)
             self.GetDriver.SendMsg(msg, MsgQueue.NoOp)
-
-    def QueueMsg(self, _item):
-        # Add a Z-Wave message to the queue
-#        self.m_mutex.Lock()
-        # See if there is already a copy of this message in the queue.  If so, 
-        # we delete it.  This is to prevent duplicates building up if the 
-        # device does not wake up very often.  Deleting the original and
-        # adding the copy to the end avoids problems with the order of
-        # commands such as on and off.
-#        erase = []
-#        for item in self.m_pendingQueue:
-#            if item == _item:
-#                # Duplicate found
-#                if MsgQueueCmd.SendMsg == item.m_command :
-#                    item.m_msg = None
-#                elif MsgQueueCmd.Controller == item.m_command:
-#                    item.m_cci = None
-#                    erase.append(item)
-#        if erase:
-#            for item in erase:
-#                self.m_pendingQueue.remove(item)
-#        self.m_pendingQueue.append( _item)
-#        sef.m_mutex.Unlock()
-        pass
     
     def ResetLastTime(self):
         self._lastTime = time.time()

@@ -178,7 +178,7 @@ class SwitchMultilevel(CommandClass):
             direction = _data[1] & 0xdF
             startLevel = _data[2]
             ignoreStartLevel = True if (_data[1] & 0x20) else False
-            self._log.write(LogLevel.Debug, self, "CommandClass REQUEST {0}, direction : {1}, startLevel : {2}, ignoreStartLevel : {3}".format(self.getFullNameCmd(_data[0]), direction, startLevel), ignoreStartLevel)
+            self._log.write(LogLevel.Debug, self, "CommandClass REQUEST {0}, direction : {1}, startLevel : {2}, ignoreStartLevel : {3}".format(self.getFullNameCmd(_data[0]), direction, startLevel, ignoreStartLevel))
             value = self._node.getValue(self.GetCommandClassId, instance, SwitchMultilevelIndex.IgnoreStartLevel)
             if value is not None : value.setVal(ignoreStartLevel)
             value = self._node.getValue(self.GetCommandClassId, instance, SwitchMultilevelIndex.StartLevel)

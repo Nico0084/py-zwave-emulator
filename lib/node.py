@@ -48,31 +48,6 @@ import threading
 import time
 from collections import OrderedDict
 
-class QueryStage:
-    ProtocolInfo = 0                                # Retrieve protocol information 
-    Probe = 1                                       # Ping device to see if alive 
-    WakeUp = 2                                     # Start wake up process if a sleeping node 
-    ManufacturerSpecific1 = 3                      # Retrieve manufacturer name and product ids if ProtocolInfo lets us 
-    NodeInfo = 4                                   # Retrieve info about supported = controlled command classes 
-    SecurityReport = 5                             # Retrive a list of Command Classes that require Security 
-    ManufacturerSpecific2 = 6                      # Retrieve manufacturer name and product ids 
-    Versions = 7                                   # Retrieve version information 
-    Instances = 8                                  # Retrieve information about multiple command class instances 
-    Static = 9                                     # Retrieve static information (doesn't change) 
-    Probe1 = 10                                     # Ping a device upon starting with configuration 
-    Associations = 11                               # Retrieve information about associations 
-    Neighbors = 12                                  # Retrieve node neighbor list 
-    Session = 13                                    # Retrieve session information (changes infrequently) 
-    Dynamic = 14                                    # Retrieve dynamic information (changes frequently) 
-    Configuration = 15                              # Retrieve configurable parameter information (only done on request) 
-    Complete = 16                                   # Query process is completed for this node 
-    none = 17                                         # Query process hasn't started for this node 
-
-    def name(self,  stage):
-        for s in self.__class__.__dict__:
-            if self.__class__.__dict__[s] == stage: return s
-        return "Stage undefined"
-
 class SecurityFlag(EnumNamed):
     Security = 0x01
     Controller = 0x02
@@ -111,7 +86,7 @@ class Node:
         self._manager = manager
         self.homeId = homeId
         self.nodeId = nodeId
-        self.m_queryStage = QueryStage.none
+        self._xmlData = data
         self.m_queryPending = False
         self.m_queryConfiguration = False
         self.m_queryRetries = 0
@@ -173,6 +148,7 @@ class Node:
     label = property(lambda self: "")
     units = property(lambda self: "")
     readOnly = property(lambda self: False)  #manager.IsValueReadOnly(v)
+    GetXmlData = property(lambda self: self._xmlData)
     GetDriver = property(lambda self: self._manager.GetDriver(self.homeId))
     GetManufacturerId = property(lambda self: GetDataAsHex([self.manufacturer['id']], 4) if 'id' in self.manufacturer else "0x0000")
     GetProductType = property(lambda self: GetDataAsHex([self.product['type']] , 4) if'type' in self.product else "0x0000")
@@ -183,6 +159,7 @@ class Node:
 
     IsListeningDevice = property(lambda self: self.listening)
     IsAddingNode = property(lambda self: self.m_addingNode)
+    IsInclude = property(lambda self: True if self.homeId != 0 and self.nodeId != 0 else False)
     IsFailed = property(lambda self: self.emulData['failed'])
     
     def IsController(self):
@@ -218,292 +195,6 @@ class Node:
         if self.security: lCaps.append("Security")
         return ', '.join(lCaps)
         
-    def AdvanceQueries(self):
-
-        # For OpenZWave to discover everything about a node, we have to follow a certain
-        # order of queries, because the results of one stage may affect what is requested
-        # in the next stage.  The stage is saved with the node data, so that any incomplete
-        # queries can be restarted the next time the application runs.
-        # The individual command classes also store some state as to whether they have
-        # had a response to certain queries.  This state is initilized by the SetStaticRequests
-        # call in QueryStage_None.  It is also saved, so we do not need to request state
-        # from every command class if some have previously responded.
-        #
-        # Each stage must generate all the messages for its particular	stage as
-        # assumptions are made in later code (RemoveMsg) that this is the if self.m_queryStage == . This means
-        # each stage is only visited once.
-
-        self._log.write(LogLevel.Detail, self, "AdvanceQueries queryPending={0} queryRetries={1} queryStage={2} live={3}".format(int(self.m_queryPending), self.m_queryRetries, QueryStage().name(self.m_queryStage), int(self.m_nodeAlive)))
-        addQSC = False			# We only want to add a query stage complete if we did some work.
-        while (not self.m_queryPending ) and self.m_nodeAlive  :
-                if self.m_queryStage ==  QueryStage.none:
-                    # Init the node query process
-                    self.m_queryStage = QueryStage.ProtocolInfo
-                    m_queryRetries = 0
-                    break;
-                elif self.m_queryStage ==  QueryStage.ProtocolInfo:
-                    # determines, among other things, whether this node is a listener, its maximum baud rate and its device classes
-                    if not self.m_protocolInfoReceived:
-                        self._log.write(LogLevel.Detail, self, "QueryStage_ProtocolInfo" )
-                        msg = Msg( "Get Node Protocol Info", self.nodeId, REQUEST, FUNC_ID_ZW_GET_NODE_PROTOCOL_INFO, False )
-                        msg.Append(self.nodeId)
-                        self.GetDriver.SendMsg( msg, MsgQueue.Query )
-                        self.m_queryPending = True
-                        addQSC = True
-                    else :
-                        # This stage has been done already, so move to the Neighbours stage
-                        self.m_queryStage = QueryStage.Probe
-                        m_queryRetries = 0;
-                    break
-                elif self.m_queryStage ==  QueryStage.Probe:
-                    self._log.write(LogLevel.Detail, self, "QueryStage_Probe" )
-                    # Send a NoOperation message to see if the node is awake
-                    # and alive. Based on the response or lack of response
-                    # will determine next step.
-                    noop = self.GetCommandClass(self._manager.GetCommandClassId('COMMAND_CLASS_NO_OPERATION'))
-                    if self.GetDriver.nodeId != self.nodeId :
-                        noop.Set(True)
-                        self.m_queryPending = True
-                        addQSC = True
-                    else:
-                        self.m_queryStage = QueryStage.WakeUp
-                        m_queryRetries = 0
-                    break
-                elif self.m_queryStage ==  QueryStage.WakeUp:
-                    # For sleeping devices other than controllers, we need to defer the usual requests until
-                    # we have told the device to send it's wake-up notifications to the PC controller.
-                    self._log.write(LogLevel.Detail, self, "QueryStage_WakeUp" )
-                    wakeUp = self.GetCommandClass(self._manager.GetCommandClassId('COMMAND_CLASS_WAKE_UP'))
-                    # if this device is a "sleeping device" and not a controller and not a
-                    # FLiRS device. FLiRS will wake up when you send them something and they
-                    # don't seem to support Wakeup
-                    if wakeUp and (self.GetDriver.nodeId != self.nodeId) and not self.frequentListening:
-                        # start the process of requesting node state from this sleeping device
-                        wakeUp.Init()
-                        self.m_queryPending = True
-                        addQSC = True
-                    else:
-                        # this is not a sleeping device, so move to the ManufacturerSpecific1 stage
-                        self.m_queryStage = QueryStage.ManufacturerSpecific1
-                        m_queryRetries = 0
-                    break
-                elif self.m_queryStage ==  QueryStage.ManufacturerSpecific1:
-                    # Obtain manufacturer, product type and product ID code from the node device
-                    # Manufacturer Specific data is requested before the other command class data so
-                    # that we can modify the supported command classes list through the product XML files.
-                    self._log.write(LogLevel.Detail, self, "QueryStage_ManufacturerSpecific1" )
-                    if self.GetDriver.nodeId == self.nodeId:
-                        configPath = self._manager.SetProductDetails(self, self.GetManufacturerId, self.GetProductType, self.GetProductId)
-                        if len(configPath.length) > 0 :
-                            ManufacturerSpecific.LoadConfigXML(self, configPath)
-                        self.m_queryStage = QueryStage.NodeInfo
-                        m_queryRetries = 0
-                    else:
-                        cc = self.GetCommandClass(self._manager.GetCommandClassId('COMMAND_CLASS_MANUFACTURER_SPECIFIC'))
-                        if cc :
-                            self.m_queryPending = cc.RequestState(CommandClass.RequestFlag_Static, 1, MsgQueue.Query)
-                            addQSC = self.m_queryPending
-                        if not self.m_queryPending:
-                            self.m_queryStage = QueryStage.NodeInfo
-                            m_queryRetries = 0
-                    break
-                elif self.m_queryStage ==  QueryStage.NodeInfo:
-                    if not self.m_protocolInfoReceived and self.m_nodeInfoSupported :
-                        # obtain from the node a list of command classes that it 1) supports and 2) controls (separated by a mark in the bu.ffer)
-                        self._log.write(LogLevel.Detail, self, "QueryStage_NodeInfo" )
-                        msg = Msg( "Request Node Info", self.nodeId, REQUEST, FUNC_ID_ZW_REQUEST_NODE_INFO, false, true, FUNC_ID_ZW_APPLICATION_UPDATE )
-                        msg.Append(self.nodeId)
-                        self.GetDriver.SendMsg(msg, MsgQueue.Query)
-                        self.m_queryPending = True
-                        addQSC = True
-                    else :
-                        # This stage has been done already, so move to the Manufacturer Specific stage
-                        self.m_queryStage = QueryStage.ManufacturerSpecific2
-                        m_queryRetries = 0
-                    break
-                elif self.m_queryStage == QueryStage.ManufacturerSpecific2:
-                    if not self.m_manufacturerSpecificClassReceived:
-                        # Obtain manufacturer, product type and product ID code from the node device
-                        # Manufacturer Specific data is requested before the other command class data so
-                        # that we can modify the supported command classes list through the product XML files.
-                        self._log.write(LogLevel.Detail, self, "QueryStage_ManufacturerSpecific2" )
-                        cc = GetCommandClass(self._manager.GetCommandClassId('COMMAND_CLASS_MANUFACTURER_SPECIFIC'))
-                        if cc :
-                            self.m_queryPending = cc.RequestState(CommandClass.RequestFlag_Static, 1, MsgQueue.Query)
-                            addQSC = self.m_queryPending
-                        if  not self.m_queryPending:
-                            self.m_queryStage = QueryStage.Versions
-                            m_queryRetries = 0
-                    else:
-                        cc = GetCommandClass(self._manager.GetCommandClassId('COMMAND_CLASS_MANUFACTURER_SPECIFIC'))
-                        if cc :
-                            cc.ReLoadConfigXML()
-                        self.m_queryStage = QueryStage.Versions
-                        m_queryRetries = 0
-                    break
-                elif self.m_queryStage ==  QueryStage.Versions:
-                    # Get the version information (if the device supports COMMAND_CLASS_VERSION
-                    self._log.write(LogLevel.Detail, self, "QueryStage_Versions" );
-                    vcc = GetCommandClass(self._manager.GetCommandClassId('COMMAND_CLASS_VERSION'))
-                    if vcc :
-                        for clss in self._cmdClass :
-                            if clss.GetMaxVersion() > 1:
-                                # Get the version for each supported command class that
-                                # we have implemented at greater than version one.
-                                self.m_queryPending |= vcc.RequestCommandClassVersion(clss.id)
-                        addQSC = self.m_queryPending
-                    # advance to Instances stage when finished
-                    if not self.m_queryPending:
-                        self.m_queryStage = QueryStage.Instances
-                        m_queryRetries = 0
-                    break
-                elif self.m_queryStage ==  QueryStage.Instances:
-                    # if the device at this node supports multiple instances, obtain a list of these instances
-                    self._log.write(LogLevel.Detail, self, "QueryStage.Instances" )
-                    micc = GetCommandClass(self._manager.GetCommandClassId('COMMAND_CLASS_MULTI_INSTANCE/CHANNEL'))
-                    if micc :
-                        self.m_queryPending = micc.RequestInstances()
-                        addQSC = self.m_queryPending
-                    # when done, advance to the Static stage
-                    if not self.m_queryPending:
-                        self.m_queryStage = QueryStage.Static
-                        m_queryRetries = 0
-                        self._log.write(LogLevel.Info, self, "Essential node queries are complete")
-                    break
-                elif self.m_queryStage ==  QueryStage.Static:
-                    # Request any other static values associated with each command class supported by this node
-                    # examples are supported thermostat operating modes, setpoints and fan modes
-                    self._log.write(LogLevel.Detail, self, "QueryStage_Static" )
-                    for clss in self._cmdClass :
-                        if not clss.m_afterMark: 
-                            self.m_queryPending |= clss.RequestStateForAllInstances(CommandClass.RequestFlag_Static, MsgQueue.Query)
-                    addQSC = self.m_queryPending
-                    if not self.m_queryPending:
-                        # when all (if any) static information has been retrieved, advance to the Associations stage
-                        self.m_queryStage = QueryStage.Associations
-                        m_queryRetries = 0
-                    break
-                elif self.m_queryStage ==  QueryStage.Probe1:
-                    self._log.write(LogLevel.Detail, self, "QueryStage_Probe1" )
-                    # Send a NoOperation message to see if the node is awake
-                    # and alive. Based on the response or lack of response
-                    # will determine next step. Called here when configuration exists.
-                    noop = self.GetCommandClass(self._manager.GetCommandClassId('COMMAND_CLASS_NO_OPERATION'))
-                    if self.GetDriver.nodeId != self.nodeId:
-                        noop.Set(True)
-                        self.m_queryPending = True
-                        addQSC = True
-                    else:
-                        self.m_queryStage = QueryStage.Associations
-                        m_queryRetries = 0
-                    break
-                elif self.m_queryStage ==  QueryStage.Associations:
-                    # if this device supports COMMAND_CLASS_ASSOCIATION, determine to which groups this node belong
-                    self._log.write(LogLevel.Detail, self, "QueryStage_Associations" )
-                    acc = self.GetCommandClass(self._manager.GetCommandClassId('COMMAND_CLASS_ASSOCIATION'))
-                    if acc :
-                        acc.RequestAllGroups(0)
-                        self.m_queryPending = True
-                        addQSC = True
-                    else:
-                        # if this device doesn't support Associations, move to retrieve Session information
-                        self.m_queryStage = QueryStage.Neighbors
-                        m_queryRetries = 0
-                    break
-                elif self.m_queryStage ==  QueryStage.Neighbors:
-                    # retrieves this node's neighbors and stores the neighbor bitmap in the node object
-                    self._log.write(LogLevel.Detail, self, "QueryStage_Neighbors" )
-                    self.GetDriver.RequestNodeNeighbors(self.nodeId, 0)
-                    self.m_queryPending = True
-                    addQSC = True
-                    break
-                elif self.m_queryStage ==  QueryStage.Session:
-                    # Request the session values from the command classes in turn
-                    # examples of Session information are: current thermostat setpoints, node names and climate control schedules
-                    self._log.write(LogLevel.Detail, self, "QueryStage_Session" )
-                    for clss in self._cmdClass :
-                        if not clss.m_afterMark:
-                            self.m_queryPending |= clss.RequestStateForAllInstances(CommandClass.RequestFlag_Session, MsgQueue.Query)
-                    addQSC = self.m_queryPending
-                    if not self.m_queryPending:
-                        self.m_queryStage = QueryStage.Dynamic
-                        m_queryRetries = 0
-                    break
-                elif self.m_queryStage ==  QueryStage.Dynamic:
-                    # Request the dynamic values from the node, that can change at any time
-                    # Examples include on/off state, heating mode, temperature, etc.
-                    self._log.write(LogLevel.Detail, self, "QueryStage_Dynamic" )
-                    self.m_queryPending = RequestDynamicValues()
-                    addQSC = self.m_queryPending
-                    if not self.m_queryPending:
-                        self.m_queryStage = QueryStage.Configuration
-                    break
-                elif self.m_queryStage ==  QueryStage.Configuration:
-                    # Request the configurable parameter values from the node.
-                    self._log.write(LogLevel.Detail, self, "QueryStage_Configuration" )
-                    if self.m_queryConfiguration:
-                        if self.RequestAllConfigParams(0):
-                            self.m_queryPending = True
-                            addQSC = True
-                        self.m_queryConfiguration = False
-                    if not self.m_queryPending:
-                        self.m_queryStage = QueryStage.Complete
-                        self.m_queryRetries = 0
-                    break
-                elif self.m_queryStage ==  QueryStage.Complete:
-                    # Notify the watchers that the queries are complete for this node
-                    self._log.write(LogLevel.Detail, self, "QueryStage_Complete")
-                    # Check whether all nodes are now complete
-                    self.GetDriver.CheckCompletedNodeQueries()
-                    return
-                else:
-                    break
-
-	if addQSC and self.m_nodeAlive:
-		# Add a marker to the query queue so this advance method
-		# gets called again once this stage has completed.
-		self.GetDriver.SendQueryStageComplete(self.nodeId, self.m_queryStage)
-
-    def QueryStageComplete(self, _stage):
-        """We are done with a stage in the query process"""
-        # Check that we are actually on the specified stage
-        if _stage != self.m_queryStage:
-            return
-        if self.m_queryStage != QueryStage.Complete:
-            # Move to the next stage
-            self.m_queryPending = False
-            self.m_queryStage += 1
-            if self.m_queryStage == QueryStage.Probe1:
-                self.m_queryStage += 1
-            self.m_queryRetries = 0
-
-    def QueryStageRetry(self, _stage, _maxAttempts = 0):
-        """Retry a stage up to the specified maximum"""
-        self._log.write(LogLevel.Info, self, "QueryStageRetry stage {0} requested stage {1} max {2} retries {3} pending {4}", QueryStage().name(_stage), QueryStage().name(self.m_queryStage), _maxAttempts, self.m_queryRetries, self.m_queryPending)
-        # Check that we are actually on the specified stage
-        if _stage != self.m_queryStage:
-            return
-        self.m_queryPending = False
-        self.m_queryRetries += 1
-        if _maxAttempts and (self.m_queryRetries >= _maxAttempts ):
-            self.m_queryRetries = 0
-            # We've retried too many times. Move to the next stage but only if
-            # we aren't in any of the probe stages.
-            if  self.m_queryStage != QueryStage.Probe and  self.m_queryStage != QueryStage.Probe1:
-                self.m_queryStage += 1
-        # Repeat the current query stage
-        self.GetDriver.RetryQueryStageComplete(self.nodeId, self.m_queryStage)
-
-    def SetQueryStage(self, _stage, _advance	= True):
-        """Set the query stage (but only to an earlier stage)"""
-        if _stage < self.m_queryStage:
-            self.m_queryStage = _stage
-            self.m_queryPending = False
-            if QueryStage.Configuration == _stage:
-                self.m_queryConfiguration = True
-        if _advance:
-            self.AdvanceQueries();
-
     def setData(self, data):
 #        self._log.write(LogLevel.Info, self, "Xml DATA : {0}".format(data))
         for clssData in data['cmdsClass']:
@@ -533,6 +224,9 @@ class Node:
         self.m_nodeInfoSupported = data['nodeinfosupported']
         self.nodeInfoReceived = False
         self.SetDeviceClasses()
+
+    def setXmlData(self, data):
+        self._xmlData = data
 
     def SetManufacturerName(self, name):
         self.manufacturer['name'] = name
@@ -700,9 +394,6 @@ class Node:
             if commandClassId == clss.id:
                 return {'name' : clss.name ,  'version': clss.m_version,  'id': clss.id}
                 
-    def GetQueryStageName(self, _stage):
-        return QueryStage().name(_stage)
-
     def hasBasicClass(self):
         for clss in self._cmdsClass:
             if clss.id == 32: #  COMMAND_CLASS_BASIC
@@ -785,15 +476,6 @@ class Node:
             if v._commandClassId == commandClassId and v._instance == instance:
                 listValues.append(v)
         return listValues
-
-    def initSequence(self):
-#        self._log.write(LogLevel.Detail, self, "AdvanceQueries queryPending=0 queryRetries=0 queryStage=ProtocolInfo live=1")
-#        self._log.write(LogLevel.Detail, self, "QueryStage_ProtocolInfo")
-#        
-#        self._log.write(LogLevel.Detail, self, "Queuing (Query) Get Node Protocol Info (Node={0})".format(self.nodeId))
-#        self._log.write(LogLevel.Detail, self, "Queuing (Query) Query Stage Complete (ProtocolInfo)")
-#        self._log.write(LogLevel.Detail, "Initilizing Node. New Node: false (false)")
-        pass
 
     def UpdateProtocolInfo(self):
         self._log.write(LogLevel.Info, self, "  Protocol Info for Node {0}:".format(self.nodeId))
@@ -937,9 +619,6 @@ class Node:
                 self._log.write(LogLevel.Info, self, "    None" )
 #                SetStaticRequests();
             self.nodeInfoReceived = True
-        else:
-            # We probably only need to do the dynamic stuff
-            self.SetQueryStage(QueryStage.Dynamic)
 #
 #	# Treat the node info frame as a sign that the node is awake
 #	if( WakeUp* wakeUp = static_cast<WakeUp*>( GetCommandClass( WakeUp::StaticGetCommandClassId() ) ) )
@@ -967,6 +646,13 @@ class Node:
        
     def ClearAddingNode(self):
        self.m_addingNode = False
+       
+    def Reset(self):
+        self.name = ""
+        self.location = ""
+        self.neighbors = []
+        clssAssoc = self.getCmdClassByName("COMMAND_CLASS_ASSOCIATION")
+        if clssAssoc is not None : clssAssoc.Reset() 
        
     def HandleMsgSendDataResponse(self, _data):
         if self.registeredCallbackId == 0:
@@ -1020,13 +706,40 @@ class Node:
         for n in self.neighbors : tab[(n -1)  //8] |= 0x01 << ((n-1) % 8)
         for i in tab: msg.Append(i)
         return msg
-    
+
+    def getMsgNewNodeAdded(selfself, _data):
+        """Format data to include a new node in network"""
+        msg = Msg( "Node info cmdclass Response", self.nodeId,  REQUEST, FUNC_ID_ZW_ADD_NODE_TO_NETWORK, False)
+        # add callbackID + nodeID + info class
+        msg.Append()
+        msg.Append(self.nodeId)
+
     def getMsgNodeInfoClass(self):
         msg = Msg( "Node info cmdclass Response", self.nodeId,  REQUEST, FUNC_ID_ZW_APPLICATION_UPDATE, False)
         msg.Append(UPDATE_STATE_NODE_INFO_RECEIVED)
         msg.Append(self.nodeId)
+#        clssList = []
+#        afterM = []
+#        for clss in self._cmdsClass:
+##            if clss.mandatory : clssList.append(clss.id)
+#            if clss.id != 0x00 and clss.id != 0x20 and not clss.ozwAdded and clss.m_createVars: # exclude COMMAND_CLASS_NO_OPERATION and  COMMAND_CLASS_BASIC and ozw intenal add
+#                if clss.m_afterMark:
+#                    if not afterM: afterM.append(0xef)  # set afterMark flag
+#                    afterM.append(clss.id)
+#                else :
+#                    clssList.append(clss.id)
+#        clssList.extend(afterM)
+#        msg.Append(len(clssList) + 3)
+#        msg.Append(self.basic)
+#        msg.Append(self.generic)
+#        msg.Append(self.specific)
+        for c in self.getNodeInfoClass(): msg.Append(c)
+        return msg
+        
+    def getNodeInfoClass(self):
         clssList = []
         afterM = []
+        fullList = []
         for clss in self._cmdsClass:
 #            if clss.mandatory : clssList.append(clss.id)
             if clss.id != 0x00 and clss.id != 0x20 and not clss.ozwAdded and clss.m_createVars: # exclude COMMAND_CLASS_NO_OPERATION and  COMMAND_CLASS_BASIC and ozw intenal add
@@ -1036,12 +749,12 @@ class Node:
                 else :
                     clssList.append(clss.id)
         clssList.extend(afterM)
-        msg.Append(len(clssList) + 3)
-        msg.Append(self.basic)
-        msg.Append(self.generic)
-        msg.Append(self.specific)
-        for c in clssList: msg.Append(c)
-        return msg
+        fullList.append(len(clssList) + 3)
+        fullList.append(self.basic)
+        fullList.append(self.generic)
+        fullList.append(self.specific)
+        for c in clssList: fullList.append(c)
+        return fullList
         
     def getMsgNodeNeighborUpdate(self, callbackId):
 #        REQUEST_NEIGHBOR_UPDATE_STARTED	=	0x21
@@ -1105,15 +818,26 @@ class Node:
                 return poll
         return None
 
+    def getEmptyPoll(self):
+        return POLLDATA
+
     def setPollParam(self, id, param, value):
         for poll in self.emulData['pollingvalues']:
             if poll['id'] == id :
                 if param in poll : 
                     print poll
                     poll[param] = value
-                    self._log.write(LogLevel.Detail, self, "Set poll {0}, param {1}, {2}:".format(id, param, poll))
+                    self._log.write(LogLevel.Detail, self, "Set poll {0}, param {1}, {2}".format(id, param, poll))
                     return True
                 else : return False
+        return False
+        
+    def updatePollParam(self, id, params):
+        for poll in self.emulData['pollingvalues']:
+            if poll['id'] == id :
+                poll.update(params)
+                self._log.write(LogLevel.Detail, self, "poll {0}, updated {1}".format(id, params))
+                return True
         return False
     
     def deletePoll(self, id):

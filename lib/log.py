@@ -111,7 +111,7 @@ class Log(object):
             for a in args :
 #                print type(a),  a.__class__.__name__
                 if a.__class__.__name__ == "Manager" : a = 'mgr'
-                elif a.__class__.__name__ == "Driver" : a = 'contrlr' 
+                elif a.__class__.__name__ == "Driver" : a = 'ctrl' 
                 elif a.__class__.__name__ == "Node" : a = 'Node%0.3d'%a.nodeId
                 elif a.__class__.__name__ == "Value" : a = 'Node%0.3d'%a.nodeId
                 else :

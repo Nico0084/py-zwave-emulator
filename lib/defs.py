@@ -231,8 +231,8 @@ SLAVE_LEARN_MODE_ENABLE		=					0x01	# enable ability to include/exclude virtual 
 SLAVE_LEARN_MODE_ADD			=				0x02	# add node directly but only if primary/inclusion controller
 SLAVE_LEARN_MODE_REMOVE	=						0x03	# remove node directly but only if primary/inclusion controller
 
-OPTION_HIGH_POWER			=					0x80
-
+OPTION_HIGH_POWER			=					0x80 # High power controller for inclusion/exclusion
+OPTION_NWI						=				0x40	# NWI Inclusion
 #Device request related
 BASIC_SET				=						0x01
 BASIC_REPORT		=							0x03
@@ -264,6 +264,20 @@ In key "pollingvalues" : [
                     "step": < value for increment >
                     }
 """
+POLLDATA = {
+                "cmdclass" : "", 
+                "instance" : 1, 
+                "label" : "",
+                "timing" : 0, 
+                "unable" : False, 
+                "params" : {
+                    "polltype": "", 
+                    "mode" : "", 
+                    "values": None, 
+                    "step": 0
+                    }
+                }
+
 """
  Commands classes from lib openzwave
 """

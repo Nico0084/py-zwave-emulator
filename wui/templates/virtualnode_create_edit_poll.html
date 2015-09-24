@@ -16,7 +16,12 @@
             {% do listClss.append(clss)%}
         {% endif %}
     {% endfor %}
-    <h2>Create a polled value</h2>
+    {% if poll is not none %}
+        <h2>Edit a polled</h2>
+    {% else %}
+        <h2>Create a polled value</h2>
+        {% set poll  = node.getEmptyPoll() %}
+    {% endif %}
     <form role="form">
     <div class="row">
         <div class="col-md-7">
@@ -25,7 +30,8 @@
                 <select class="form-control" id="clss_polled">
                     <option value="">No selection</option>
                     {% for clss in listClss %}
-                        <option value="{{ clss.GetCommandClassId }}">{{ "0x%.2x"%clss.GetCommandClassId }} - {{ clss.GetCommandClassName }}</option>
+                        <option value="{{ clss.GetCommandClassId }}" {% if poll['cmdclass'] == clss.GetCommandClassName %}selected="true"{% endif %}>
+                            {{ "0x%.2x"%clss.GetCommandClassId }} - {{ clss.GetCommandClassName }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -33,7 +39,7 @@
         <div class="col-md-2">
             <div class="form-group">
                 <label for="timing">Set time repeat (s)</label>
-                <input type="text" id="timing" class="form-control" value="">
+                <input type="text" id="timing" class="form-control" value="{{ poll['timing'] }}">
             </div>
         </div>
     </div>
@@ -43,6 +49,9 @@
                 <label for="clss_lab_polled">Select label from command class</label>
                 <select class="form-control" id="clss_lab_polled">
                     <option value="">No selection</option>
+                    {% if poll['cmdclass'] != "" %}
+                        <option value="{{ poll['label'] }}" selected="true">{{ poll['label'] }}</option>
+                    {% endif %}
                 </select>
             </div>
         </div>
@@ -51,7 +60,11 @@
                 <label for="instances">Select instance from command class</label>
                 <select class="form-control" id="instances">
                     <option value=0>No selection</option>
-                    <option value=1>1</option>
+                    {% if poll['cmdclass'] != "" %}
+                        <option value="{{ poll['instance'] }}" selected="true">{{ poll['instance'] }}</option>
+                    {% else %}
+                        <option value=1>1</option>
+                    {% endif %}
                 </select>
             </div>
             </div>
@@ -102,7 +115,16 @@
             </div>
         </div>
     </div>
-    <button type="button" class="btn btn-default" id="create_poll">Create</button>
+    <div class="row">
+        <div class="text-center">
+            {% if poll['cmdclass'] != "" %}
+                <button type="button" class="btn btn-primary" id="update_poll">Update</button>
+            {% else %}
+                <button type="button" class="btn btn-primary" id="create_poll">Create</button>
+            {% endif %}
+            <button type="button" class="btn btn-default" id="btcancel">Cancel</button>
+        </div>
+    </div>
     </form>
 </div>
 
@@ -116,6 +138,7 @@
         var listVal = [];
         var values = [];
         var step = 0;
+        var init = false;
         
         // Enable the Form
         $("#clss_polled, #instances, #clss_lab_polled").change(function() {
@@ -190,6 +213,20 @@
                         $("#instances").val(data.instance);
                     };
                 };
+                if (init == false) {
+                    $("#poll_type option:selected").removeAttr("selected");
+                    $("#poll_type option[value='{{ poll['params']['polltype'] }}'").attr('selected', 'selected');
+                    typePoll = "{{ poll['params']['polltype'] }}"
+                    $("#poll_mode option:selected").removeAttr("selected");
+                    $("#poll_mode option[value='{{ poll['params']['mode'] }}'").attr('selected', 'selected');
+                    if ("{{ poll['unable'] }}" == "True") {
+                        $("#unable").click();
+                    } else {
+                        $("#disable").click();
+                    };
+                    $("#poll_type").change();
+                    init = true;
+                };
             });
         });
 
@@ -198,7 +235,12 @@
             typePoll = this.value;
             switch (this.value) {
                 case "rangeNumber" :
-                    values = listVal;
+                    if (init == false) {
+                        values.min = "{{poll['params']['values']['min']}}";
+                        values.max = "{{poll['params']['values']['max']}}";
+                    } else {
+                        values = listVal;
+                    };
                     $('#form_type').replaceWith(renderMinMaxForm("form_type", valueType, values.min,values.max));
                     break;
                 case "serie" :
@@ -260,7 +302,14 @@
                 };
             });
         };
-
+        
+        // if editing poll, initialize datas
+        if ($("#clss_polled")[0].value != 0) {
+            console.log("  pool value  = {{ poll }}");
+            $("#clss_polled").change();
+        } else {
+            init = true;
+        };
         $('#create_poll').click(function () {
             console.log('validate creation');
             clssId =  $("#clss_polled").val();
@@ -289,6 +338,40 @@
                             location.pathname ="/virtualnodes/{{ node_ref }}/config"
                     };
             });
+        });
+        
+        $('#update_poll').click(function () {
+            console.log('validate creation');
+            clssId =  $("#clss_polled").val();
+            instance = $("#instances").val();
+            label = $("#clss_lab_polled").val();
+            $.getJSON("/virtualnodes/{{ node_ref }}/{{ poll['id'] }}/update_poll", {
+                    clssid: clssId,
+                    instance: instance,
+                    label: label,
+                    timing: $("#timing").val(),
+                    status: $('#status').children(".status").text().toLowerCase(),
+                    polltype: typePoll,
+                    mode: $("#poll_mode").val(),
+                    values: JSON.stringify(values),
+                    step: step
+                    }, function(data, result) {
+                        console.log("Retour de data :" + JSON.stringify(data));
+                        var label = "";
+                        if (data.result == 'error') {
+                            new PNotify({
+                                    type: 'error',
+                                    title: 'Invalid input',
+                                    text: data.msg,
+                                    delay: 6000
+                            });
+                        } else {
+                            location.pathname ="/virtualnodes/{{ node_ref }}/config"
+                    };
+            });
+        });
+        $('#btcancel').click(function () {
+            location.pathname ="/virtualnodes/{{ node_ref }}/config"
         });
     });
   </script>

@@ -39,10 +39,14 @@ import sys
 
 class OZwaveConfigException(Exception):
     """"Zwave Manager exception  class"""
-            
+
     def __init__(self, value):
         Exception.__init__(self, value)
         self.msg = "OZwave XML files exception:"
+
+    def __str__(self):
+        """String format object"""
+        return repr(self.msg+' '+self.value)
 
 class DeviceProduct():
     """Read and handle individual product file recognized by open-zwave."""
@@ -249,7 +253,7 @@ class Manufacturers():
                         prod .update({'config': conf})
                         products.append(prod)
             except: pass
-            manufacturers.append({'manufacturer': m['name'], 'id': m['id'],  'products': products})
+            manufacturers.append({'manufacturer': m['name'], 'id': m['id'], 'products': products})
         return manufacturers
     
     def getAllProductsTranslateText(self):
@@ -286,7 +290,10 @@ class networkFileConfig():
             driver['apiCapabilities'] = int(a.attributes.get("api_capabilities").value.strip())
             driver['controllerCapabilities'] = int(a.attributes.get("controller_capabilities").value.strip())
             driver['pollInterval'] = int(a.attributes.get("poll_interval").value.strip())
-            driver['pollIntervalBetween'] = int(a.attributes.get("poll_interval_between").value.strip())
+            try : # handle openzwave version int or boolean
+                driver['pollIntervalBetween'] = int(a.attributes.get("poll_interval_between").value.strip())
+            except :
+                driver['pollIntervalBetween'] = True if a.attributes.get("poll_interval_between").value.strip()== "true" else False
             self.drivers.append(driver)
         for n in self.xml_content.getElementsByTagName("Node"):         
             item = {'id' : int(n.attributes.get("id").value.strip())}
@@ -420,7 +427,7 @@ class networkFileConfig():
                             except: 
                                 print "*** error on decoding {0} : {1} ".format(item['product']["name"],  v.attributes.get("label").value.strip())
                                 print value
-                                for a in v.attributes.keys(): print "attribute : " ,  a
+                                for a in v.attributes.keys(): print "attribute : ", a
                                 pass
                         cmdClass["values"] = values
                     except: pass
@@ -554,7 +561,7 @@ if __name__ == "__main__":
 #    trans_file = "/var/tmp/exporttrad.txt"
     
     ozw_path ="C:\Python_prog\Dev_OZW\openzwave\config"
-    ozw_conf = "C:\Python_prog\domogik-plugin-ozwave\data\zwcfg_0x014d0f18.xml"
+    ozw_conf = "C:\Python_prog\domogik-plugin-ozwave\data\zwcfg_0x01ff11ff.xml"
     trans_file = "C:/Python_prog/test/exporttrad.txt"
     
     listManufacturers = Manufacturers(ozw_path)

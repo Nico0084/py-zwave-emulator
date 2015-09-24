@@ -244,7 +244,7 @@
         },{
             "nodeid" : 21,
             "comment" : "FGS211 Switch - pool",
-            "failed" : true,
+            "failed" : false,
             "timeoutwakeup" : 0,
             "wakeupduration" : 0,
             "pollingvalues" : [],

@@ -67,6 +67,10 @@ class Association(CommandClass):
         for g in self.groups:
             if g['index'] == groupIdx: return g
         return None
+    
+    def Reset(self):
+        for group  in self.groups:
+            group['nodes'] = []
 
     def SetGroupKey(self, groupIdx, key, value):
         for g in self.groups:

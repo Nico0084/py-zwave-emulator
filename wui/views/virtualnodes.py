@@ -206,8 +206,8 @@ def virtualnode_cmdClasse_create_poll(node_ref, clssId):
         clss = node.getCmdClass(int(clssId))
         result,  msg = node.addPollValue({'cmdclass':clss.GetCommandClassName, 'instance': instance,'label': label, 'timing': timing,
                                                        'unable': True if status == 'unable' else False,
-                                                       'params': { 'polltype': polltype, 
-                                                                         'mode': mode, 
+                                                       'params': { 'polltype': polltype,
+                                                                         'mode': mode,
                                                                          'values': values, 
                                                                          'step': step}})
         if result == 'error':
@@ -221,7 +221,37 @@ def virtualnode_cmdClasse_create_poll(node_ref, clssId):
 #            )
 #        return virtualnode_configs(node_ref)
 #        return redirect(url_for("/virtualnodes//config",  node_ref = node_ref))
-    return json.dumps({ "error": "Virtual Node {0} not find.".format(node_ref)}), 500 
+    return json.dumps({ "error": "Virtual Node {0} not find.".format(node_ref)}), 500
+
+@app.route('/virtualnodes/<node_ref>/<poll_id>/update_poll')
+def virtualnode_cmdClasse_update_poll(node_ref, poll_id):
+    manager =  Manager()
+    homeId = node_ref.split(".")[0]
+    nodeId = int(node_ref.split(".")[1])
+    node = manager.getNode(homeId, nodeId)
+    clssId = int(request.args.get('clssid', 0, type=str))
+    instance = int(request.args.get('instance', 0, type=str))
+    label = request.args.get('label', 0, type=str)
+    timing = int(request.args.get('timing', 0, type=str))
+    status = request.args.get('status', 0, type=str)
+    polltype = request.args.get('polltype', '', type=str)
+    mode = request.args.get('mode')
+    values = json.loads(request.args.get('values'))
+    step = request.args.get('step','')
+    print request.args.items()
+    print request.form
+    print  homeId , nodeId , instance , label , timing,  status, polltype ,  mode , values , step
+    if node is not None :
+        clss = node.getCmdClass(int(clssId))
+        if not node.updatePollParam(int(poll_id), {'cmdclass':clss.GetCommandClassName, 'instance': instance,'label': label, 'timing': timing,
+                                                       'unable': True if status == 'unable' else False,
+                                                       'params': { 'polltype': polltype,
+                                                                         'mode': mode,
+                                                                         'values': values, 
+                                                                         'step': step}}) :
+            return jsonify(result='error', msg="Poll {0} not exist for node {1}, parameters update fail.".format(poll_id, node_ref))
+        return jsonify(result='success', msg='Parameters of poll updated')
+    return json.dumps({ "error": "Virtual Node {0} not find.".format(node_ref)}), 500
 
 @app.route('/virtualnodes/<node_ref>/delete_poll/<idPoll>')
 def virtualnode_cmdClasse_delete_poll(node_ref, idPoll):
@@ -236,20 +266,75 @@ def virtualnode_cmdClasse_delete_poll(node_ref, idPoll):
             return jsonify(result='error',  msg='poll {0} not find'.format(idPoll),  idPoll=idPoll)
     return json.dumps({ "error": "Virtual Node {0} not find.".format(node_ref) }), 500 
 
-@app.route('/virtualnodes/<node_ref>/create_poll')
-def virtualnode_cmdClasse_new_poll(node_ref):
+@app.route('/virtualnodes/<node_ref>/create_edit_poll/<idPoll>')
+def virtualnode_cmdClasse_create_edit_poll(node_ref, idPoll):
     manager =  Manager()
     homeId = node_ref.split(".")[0]
     nodeId = int(node_ref.split(".")[1])
     node = manager.getNode(homeId, nodeId)
+    poll = node.getPoll(int(idPoll))
     if node is not None :
-        return render_template('virtualnode_newpoll.html',
+        return render_template('virtualnode_create_edit_poll.html',
             mactive="virtualnodes",
             active = 'config',
             node_ref = node_ref,
-            node = node
+            node = node, 
+            poll = poll
             )
     return json.dumps({ "error": "Virtual Node {0} not find.".format(node_ref) }), 500 
+    
+@app.route('/virtualnodes/createnode/copy/<node_ref>')
+def virtualnode_create_node_copy(node_ref):
+    manager =  Manager()
+    homeId = node_ref.split(".")[0]
+    nodeId = int(node_ref.split(".")[1])
+    node = manager.getNode(homeId, nodeId)
+    newNode = manager.copyNode(node)
+    if newNode :
+        result = 'success'
+        msg = u"New Node created by copying {0}, reload virtual nodes list.".format(node_ref)
+    else :
+        msg = u"error on copying {0}".format(node_ref)
+        result = 'error'
+    return jsonify(result=result,  msg=msg)
+
+@app.route('/virtualnodes/includenode/<homeId>/<nodeId>')
+def virtualnode_include_node(homeId, nodeId):
+    manager =  Manager()
+    node = manager.getNode(0, int(nodeId))
+    if node :
+        if manager.includeNewNode(int(homeId), node):
+            result = 'success'
+            msg = u"New Node include in {0}, reload virtual nodes list.".format(nodeId)
+        else :
+            msg = u"error on inclusion {0}. Check if Controller is in inclusion".format(nodeId)
+            result = 'error'
+    else :
+        msg = u"error on inclusion node {0} node found.".format(nodeId)
+        result = 'error'
+    return jsonify(result=result,  msg=msg)
+
+@app.route('/virtualnodes/inclusion/<homeId>/<cmd>')
+def virtualnode_inclusion_node(homeId, cmd):
+    manager =  Manager()
+    mode = request.args.get('mode', 0, type=str)
+    driver = manager.GetDriver(int(homeId))
+    if driver:
+        result = 'success'
+        if cmd =="start":
+            driver.setInInclusion()
+            msg = u"Command start inclusion mode sended to controller {0}.".format(manager.matchHomeID(homeId))
+        elif cmd == "stop":
+            driver.setOutInclusion()
+            msg = u"Command stop inclusion mode sended to controller {0}.".format(manager.matchHomeID(homeId))
+        else: 
+            msg = u"Inclusion command doesn't exist : {0}.".format(cmd)
+            result = 'error'
+    else :
+        msg = u"controller doesn't exist : {0}.".format(manager.matchHomeID(homeId))
+        result = 'error'
+    return jsonify(result=result,  msg=msg)
+
 
 # jinja 2 filters
 
