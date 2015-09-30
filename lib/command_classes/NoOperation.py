@@ -59,7 +59,7 @@ class NoOperation(CommandClass):
     def Set(self, _route, _queue = MsgQueue.NoOp): 
         # Send a No Operation fake message class.
         self._log.write(LogLevel.Detail, self._node, "NoOperation::Set - Routing={0}".format(_route))
-        msg = Msg( "NoOperation_Set", self.nodeId,  REQUEST, FUNC_ID_ZW_SEND_DATA, True )
+        msg = Msg( "NoOperation_Set", self.nodeId,  REQUEST, FUNC_ID_ZW_SEND_DATA)
         msg.Append(self.nodeId)
         msg.Append(2)
         msg.Append(self.GetCommandClassId)
@@ -68,6 +68,7 @@ class NoOperation(CommandClass):
             msg.Append(self.GetDriver.GetTransmitOptions)
         else :
             msg.Append( TRANSMIT_OPTION_ACK | TRANSMIT_OPTION_NO_ROUTE )
+        msg.Append(self.GetDriver.getNextCallbackId())
         self.GetDriver.SendMsg(msg, _queue )
     
     

@@ -81,7 +81,7 @@ class SwitchAll(CommandClass):
         
     def ProcessMsg(self, _data, instance=1, multiInstanceData = []):
         if _data[0] == SwitchAllCmd.Get:
-            msg = Msg("SwitchAllCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+            msg = Msg("SwitchAllCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             value = self._node.getValue(self.GetCommandClassId, instance, 0) #  index is allways 0
             if value is not None :
                 msg.Append(TRANSMIT_COMPLETE_OK)
@@ -98,7 +98,7 @@ class SwitchAll(CommandClass):
         elif _data[0] in [SwitchAllCmd.On, SwitchAllCmd.Off] :
             #TODO: Call manager to send at all nodes
             self._log.write(LogLevel.Warning, self, "SwitchALL on/off cmd received, Not impletmented, TODO......")
-            msg = Msg("SwitchAllCmd_On-Off_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+            msg = Msg("SwitchAllCmd_On-Off_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             value = self._node.getValue(self.GetCommandClassId, instance, 0) #  index is allways 0
             if value is not None :
                 msg.Append(TRANSMIT_COMPLETE_OK)

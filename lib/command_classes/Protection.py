@@ -67,7 +67,7 @@ class Protection(CommandClass):
     def ProcessMsg(self, _data, instance=1, multiInstanceData = []):
         print '++++++++++++++++ Alarm ProcessMsg +++++++++++++++'
         if _data[0] == ProtectionCmd.Get: 
-            msg = Msg("ProtectionCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+            msg = Msg("ProtectionCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             value = self._node.getValue(self.GetCommandClassId, instance, 0)
             msg.Append(TRANSMIT_COMPLETE_OK)
             msg.Append(self.nodeId)

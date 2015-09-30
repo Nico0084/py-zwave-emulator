@@ -64,7 +64,7 @@ class Alarm(CommandClass):
     def ProcessMsg(self, _data, instance=1, multiInstanceData = []):
         print '++++++++++++++++ Alarm ProcessMsg +++++++++++++++'
         if _data[0] == AlarmCmd.Get: 
-            msg = Msg("AlarmCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+            msg = Msg("AlarmCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             vType = self._node.getValue(self.GetCommandClassId, instance, AlarmIndex.Type)
             vLevel = self._node.getValue(self.GetCommandClassId, instance, AlarmIndex.Level)
             msg.Append(TRANSMIT_COMPLETE_OK)

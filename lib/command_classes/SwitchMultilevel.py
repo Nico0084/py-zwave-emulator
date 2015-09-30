@@ -143,7 +143,7 @@ class SwitchMultilevel(CommandClass):
         if _data[0] == SwitchMultilevelCmd.Get:
             value = self._node.getValue(self.GetCommandClassId, instance, self.getByteIndex(instance))
             if value is not None :
-                msg = Msg("SwitchMultilevelCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+                msg = Msg("SwitchMultilevelCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
                 msgData = self.getDataMsg(_data,  instance)
                 if multiInstanceData :
                     multiInstanceData[2] += len(msgData)
@@ -155,7 +155,7 @@ class SwitchMultilevel(CommandClass):
                 for v in msgData : msg.Append(v)
                 self.GetDriver.SendMsg(msg, MsgQueue.NoOp)
         elif _data[0] == SwitchMultilevelCmd.SupportedGet:
-            msg = Msg("SwitchMultilevelCmd_SupportedReport", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+            msg = Msg("SwitchMultilevelCmd_SupportedReport", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             msg.Append(TRANSMIT_COMPLETE_OK)
             msg.Append(self.nodeId)
             switchtype1label = 0

@@ -86,7 +86,7 @@ class Basic(CommandClass):
         print 'DATA : ',  _data,  " -- instance : ",  instance
         # Version 1 
         if _data[0] == BasicCmd.Get: 
-            msg = Msg("BasicCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+            msg = Msg("BasicCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             msgData = self.getDataMsg(_data, instance)
             if msgData:
                 if multiInstanceData :

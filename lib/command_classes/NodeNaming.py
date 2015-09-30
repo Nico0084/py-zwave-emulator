@@ -207,7 +207,7 @@ class NodeNaming(CommandClass):
 
     def ProcessMsg(self, _data, instance=1, multiInstanceData = []):
         if _data[0] == NodeNamingCmd.Get:
-            msg = Msg("NodeNamingCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+            msg = Msg("NodeNamingCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             value = self._node.getValue(self.GetCommandClassId, instance, 0) # Name index is allways 0
             if value is not None : name = value._value
             else : name = self._node.name
@@ -236,7 +236,7 @@ class NodeNaming(CommandClass):
             else :
                 self._log.write(LogLevel.Warning, self, "{0}, no name extract from data : {1}".format(self.getFullNameCmd(_data[0]), GetDataAsHex(_data)))
         elif _data[0] == NodeNamingCmd.LocationGet:
-            msg = Msg("NodeNamingCmd_LocationReport", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+            msg = Msg("NodeNamingCmd_LocationReport", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             value = self._node.getValue(self.GetCommandClassId, instance, 1) # TODO : Check this : Location index presumed allways 1
             if value is not None : location = value._value
             else : location = self._node.location

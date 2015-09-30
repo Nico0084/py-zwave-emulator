@@ -78,7 +78,7 @@ class SwitchBinary(CommandClass):
 
     def ProcessMsg(self, _data, instance=1, multiInstanceData = []):
         if _data[0] == SwitchBinaryCmd.Get:
-            msg = Msg("SwitchBinaryCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+            msg = Msg("SwitchBinaryCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             msgData = self.getDataMsg(_data, instance)
             if msgData :
                 if multiInstanceData :

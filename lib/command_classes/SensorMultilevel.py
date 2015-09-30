@@ -195,7 +195,7 @@ class SensorMultilevel(CommandClass):
         if _data[0] == SensorMultilevelCmd.SupportedGet:
 #            group = self.getGroup(_data[1])
 #            if group is not None :
-#                msg = Msg("SensorMultilevelCmd_Supported_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+#                msg = Msg("SensorMultilevelCmd_Supported_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER,)
 #                msg.Append(TRANSMIT_COMPLETE_OK)
 #                msg.Append(self.nodeId)
 #                msg.Append(len(group['nodes']) + 5)
@@ -207,7 +207,7 @@ class SensorMultilevel(CommandClass):
         elif _data[0] == SensorMultilevelCmd.Get:
             value = self._node.getValue(self.GetCommandClassId, instance, self.getByteIndex(instance))
             if value is not None :
-                msg = Msg("SensorMultilevelCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+                msg = Msg("SensorMultilevelCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
                 msgData = self.getDataMsg(_data,  instance)
                 if multiInstanceData :
                     multiInstanceData[2] += len(msgData)

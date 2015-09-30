@@ -108,7 +108,7 @@ class WakeUp(CommandClass):
     def ProcessMsg(self, _data, instance=1, multiInstanceData = []):
         print '++++++++++++++++ WakeUp ProcessMsg +++++++++++++++'
         if _data[0] == WakeUpCmd.IntervalGet: 
-            msg = Msg("WakeUpCmd_IntervalReport", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+            msg = Msg("WakeUpCmd_IntervalReport", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             vInterval = self._node.getValue(self.GetCommandClassId, instance, 0)
             msgData = vInterval.getValueHex(24)
             msg.Append(TRANSMIT_COMPLETE_OK)
@@ -125,7 +125,7 @@ class WakeUp(CommandClass):
             self._lastTime = time.time()
             self.m_awake = False
         elif _data[0] == WakeUpCmd.IntervalCapabilitiesGet: 
-            msg = Msg("WakeUpCmd_IntervalCapabilitiesReport", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+            msg = Msg("WakeUpCmd_IntervalCapabilitiesReport", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             msgData = []
             for i in range(1, 5) : # get value for capabilities index 1 to 4
                 value = self._node.getValue(self.GetCommandClassId, instance, i)
@@ -149,22 +149,24 @@ class WakeUp(CommandClass):
             # This command class doesn't work with multiple instances
             return False
         if _getTypeEnum == WakeUpCmd.IntervalCapabilitiesGet:
-            msg = Msg( "WakeUpCmd_IntervalCapabilityGet", self.nodeId, REQUEST, FUNC_ID_ZW_SEND_DATA, True, True, FUNC_ID_APPLICATION_COMMAND_HANDLER, self.GetCommandClassId)
+            msg = Msg( "WakeUpCmd_IntervalCapabilityGet", self.nodeId, REQUEST, FUNC_ID_ZW_SEND_DATA, True, FUNC_ID_APPLICATION_COMMAND_HANDLER, self.GetCommandClassId)
             msg.Append(self.nodeId)
             msg.Append( 2 )
             msg.Append(self.GetCommandClassId)
             msg.Append(WakeUpCmd.IntervalCapabilitiesGet)
             msg.Append(self.GetDriver.GetTransmitOptions())
+            msg.Append(self.GetDriver.getNextCallbackId())
             self.GetDriver.SendMsg(msg, _queue)
 
         if _getTypeEnum == 0:
             # We won't get a response until the device next wakes up
-            msg = Msg( "WakeUpCmd_IntervalGet", self.nodeId, REQUEST, FUNC_ID_ZW_SEND_DATA, true, true, FUNC_ID_APPLICATION_COMMAND_HANDLER, self.GetCommandClassId)
+            msg = Msg( "WakeUpCmd_IntervalGet", self.nodeId, REQUEST, FUNC_ID_ZW_SEND_DATA, True, FUNC_ID_APPLICATION_COMMAND_HANDLER, self.GetCommandClassId)
             msg.Append(self.nodeId)
             msg.Append( 2 )
             msg.Append(self.GetCommandClassId)
             msg.Append(WakeUpCmd.IntervalGet )
             msg.Append(self.GetDriver.GetTransmitOptions)
+            msg.Append(self.GetDriver.getNextCallbackId())
             self.GetDriver.SendMsg(msg, _queue)
             return True
         return False
@@ -176,13 +178,13 @@ class WakeUp(CommandClass):
     
     def SendWakeUp(self):
         if self.GetDriver is not None :
-            msg = Msg( "Send Wakeup Notification", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+            msg = Msg( "Send Wakeup Notification", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             msg.Append(TRANSMIT_COMPLETE_OK) # 0x00
             msg.Append(self.nodeId)
             msg.Append(0x02)
             msg.Append(self.GetCommandClassId)
             msg.Append(WakeUpCmd.Notification)
-            self.GetDriver.SendMsg(msg, MsgQueue.NoOp)
+            self.GetDriver.SendMsg(msg, MsgQueue.WakeUp)
     
     def ResetLastTime(self):
         self._lastTime = time.time()

@@ -79,7 +79,7 @@ class SensorBinary(CommandClass):
     def ProcessMsg(self, _data, instance=1, multiInstanceData = []):
         print '++++++++++++++++ SensorBinary ProcessMsg +++++++++++++++'
         if _data[0] == SensorBinaryCmd.Get: 
-            msg = Msg("SensorBinaryCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+            msg = Msg("SensorBinaryCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             index = self.getActiveIndex()
             vData = self._node.getValue(self.GetCommandClassId, instance, index)
             msg.Append(TRANSMIT_COMPLETE_OK)

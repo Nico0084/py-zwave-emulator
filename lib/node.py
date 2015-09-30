@@ -494,7 +494,7 @@ class Node:
 
     def getMsgProtocolInfo(self):
         # TODO: Don't known completly how bytes is formating so applied just basic set for openzwave
-        msg = Msg( "NoOperation_Set", self.nodeId,  RESPONSE, FUNC_ID_ZW_GET_NODE_PROTOCOL_INFO, False)
+        msg = Msg( "NoOperation_Set", self.nodeId,  RESPONSE, FUNC_ID_ZW_GET_NODE_PROTOCOL_INFO)
         d = 0x80 if self.listening else 0
         if self.routing : d |= 0x40
         if self.max_baud_rate == 40000 : d |= 0x12 #   mask for (_data[0] & 0x38 ) == 0x10 
@@ -658,12 +658,14 @@ class Node:
         if self.registeredCallbackId == 0:
             self.registeredClassId = _data[4]
             self.registeredCallbackId = _data[-2]
-            msg = Msg( "Z-Wave stack for cmdClass 0x%.2x ZW_SEND_DATA"%self.registeredClassId, self.nodeId,  RESPONSE, FUNC_ID_ZW_SEND_DATA, False)
+            msg = Msg( "Z-Wave stack for cmdClass 0x{0:02x} ZW_SEND_DATA".format(self.registeredCallbackId), self.nodeId,  RESPONSE, FUNC_ID_ZW_SEND_DATA)
             msg.Append(TRANSMIT_OPTION_ACK) # 0x01
+            msg.SetExpectedCallBack(_data[-2])
             self.GetDriver.SendMsg(msg, MsgQueue.NoOp)
             # Sending 2nd response
-            msg = Msg( "Request with callback ID {0} for ZW_SEND_DATA".format(self.registeredCallbackId), self.nodeId,  REQUEST, FUNC_ID_ZW_SEND_DATA, False)
+            msg = Msg( "Request with callback ID 0x{0:02x} for ZW_SEND_DATA".format(self.registeredCallbackId), self.nodeId,  REQUEST, FUNC_ID_ZW_SEND_DATA)
             msg.Append(self.registeredCallbackId)
+            msg.SetExpectedCallBack(_data[-2])
             if self.IsFailed or not self.IsAwake(): 
                 msg.Append(TRANSMIT_COMPLETE_NO_ACK) #  0x01
                 self.GetDriver.SendMsg(msg, MsgQueue.NoOp)
@@ -673,7 +675,7 @@ class Node:
                 self.handleApplicationCommandHandler(_data[5:])
             self.registeredCallbackId = 0
             self.registeredClassId = 0
-        else : print " ********************** registeredCallbackId = {0} *********".format(self.registeredCallbackId)
+        else : print " ********************** registeredCallbackId = 0x{0:02x} *********".format(self.registeredCallbackId)
 #        FUNC_ID_ZW_SEND_DATA
 #        FUNC_ID_SERIAL_API_GET_INIT_DATA
 #        FUNC_ID_SERIAL_API_APPL_NODE_INFORMATION
@@ -689,7 +691,7 @@ class Node:
             
     def getMsgNodeInfo(self):
         if self.IsController() and self.failNodeInfo < 1 :
-            msg = Msg("Simulate Fail node info", self.nodeId,  REQUEST, FUNC_ID_ZW_APPLICATION_UPDATE, False)
+            msg = Msg("Simulate Fail node info", self.nodeId,  REQUEST, FUNC_ID_ZW_APPLICATION_UPDATE)
             msg.Append(UPDATE_STATE_NODE_INFO_REQ_FAILED)          
             msg.Append(0)
             msg.Append(0)
@@ -700,7 +702,7 @@ class Node:
             return self.getMsgNodeInfoClass()
        
     def getMsgRoutingInfo(self,  _data):
-        msg = Msg("Routing info Response", self.nodeId,  RESPONSE, FUNC_ID_ZW_GET_ROUTING_INFO, False)
+        msg = Msg("Routing info Response", self.nodeId,  RESPONSE, FUNC_ID_ZW_GET_ROUTING_INFO)
         tab = []
         for i in range(29): tab.append(0x00) # Bit filed node ID
         for n in self.neighbors : tab[(n -1)  //8] |= 0x01 << ((n-1) % 8)
@@ -709,13 +711,13 @@ class Node:
 
     def getMsgNewNodeAdded(selfself, _data):
         """Format data to include a new node in network"""
-        msg = Msg( "Node info cmdclass Response", self.nodeId,  REQUEST, FUNC_ID_ZW_ADD_NODE_TO_NETWORK, False)
+        msg = Msg( "Node info cmdclass Response", self.nodeId,  REQUEST, FUNC_ID_ZW_ADD_NODE_TO_NETWORK)
         # add callbackID + nodeID + info class
         msg.Append()
         msg.Append(self.nodeId)
 
     def getMsgNodeInfoClass(self):
-        msg = Msg( "Node info cmdclass Response", self.nodeId,  REQUEST, FUNC_ID_ZW_APPLICATION_UPDATE, False)
+        msg = Msg( "Node info cmdclass Response", self.nodeId,  REQUEST, FUNC_ID_ZW_APPLICATION_UPDATE)
         msg.Append(UPDATE_STATE_NODE_INFO_RECEIVED)
         msg.Append(self.nodeId)
 #        clssList = []
@@ -760,7 +762,7 @@ class Node:
 #        REQUEST_NEIGHBOR_UPDATE_STARTED	=	0x21
 #        REQUEST_NEIGHBOR_UPDATE_DONE	    =	0x22
 #        REQUEST_NEIGHBOR_UPDATE_FAILED	=	0x23
-        msg = Msg( "Neighbor update status", self.nodeId,  REQUEST, FUNC_ID_ZW_REQUEST_NODE_NEIGHBOR_UPDATE_OPTIONS, False)
+        msg = Msg( "Neighbor update status", self.nodeId,  REQUEST, FUNC_ID_ZW_REQUEST_NODE_NEIGHBOR_UPDATE_OPTIONS)
         msg.Append(callbackId)
         if self.currentCommand == 0 : 
             self.currentCommand = FUNC_ID_ZW_REQUEST_NODE_NEIGHBOR_UPDATE_OPTIONS
@@ -769,8 +771,10 @@ class Node:
             threading.Thread(None, self.emulCycleCmd, "th_handleEmulCycleCmd_node_{0}.".format(self.nodeId), (), {'listState': [REQUEST_NEIGHBOR_UPDATE_DONE],
                                         'timings': [2.0],
                                         'callback': self.getMsgNodeNeighborUpdate, 
-                                        'callbackId': callbackId
-                                        }).start()
+                                        'callbackId': callbackId, 
+                                        'queues' : [MsgQueue.Command], 
+                                        'firstNext':  [True]
+                                    }).start()
         elif self.currentCommand == FUNC_ID_ZW_REQUEST_NODE_NEIGHBOR_UPDATE_OPTIONS:
             msg.Append(self.currentCommandState)
             if self.currentCommandState != REQUEST_NEIGHBOR_UPDATE_STARTED:
@@ -873,16 +877,13 @@ class Node:
         else:
             return "error", "Polled value allready exist, can't be create."
             
-    def emulCycleCmd(self, listState = [], timings = [], callback = None,  callbackId = None):
+    def emulCycleCmd(self, listState = [], timings = [], callback = None, callbackId = None, queues = [], firstNext = []):
         self._log.write(LogLevel.Detail, self, "Start command emulation :{0} ({1})".format(getFuncName(self.currentCommand), GetDataAsHex([self.currentCommand])))
         i = 0
         print "++++ Node emulCycleCmdkwargs : ", listState, timings, callback
         for state in listState:
-            self._stop.wait(timings[i])
-            if not self._stop.isSet() :
-                self.currentCommandState = listState[i]
-                if callbackId is not None : msg = callback(callbackId)
-                else : msg = callback()
-                self.GetDriver.SendMsg(msg, MsgQueue.NoOp)
-                i += 1
-            else : break
+            self.currentCommandState = listState[i]
+            if callbackId is not None : msg = callback(callbackId)
+            else : msg = callback()
+            self.GetDriver.SendMsg(msg, queues[i], firstNext[i], timings[i])
+            i += 1

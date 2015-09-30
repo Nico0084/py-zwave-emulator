@@ -78,7 +78,7 @@ class SensorAlarm(CommandClass):
     def ProcessMsg(self, _data, instance=1, multiInstanceData = []):
         print '++++++++++++++++ SensorAlarm ProcessMsg +++++++++++++++'
         if _data[0] == SensorAlarmCmd.Get: 
-            msg = Msg("SensorAlarmCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+            msg = Msg("SensorAlarmCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             vData = self._node.getValue(self.GetCommandClassId, instance, 1)
             msg.Append(TRANSMIT_COMPLETE_OK)
             msg.Append(self.nodeId)
@@ -91,7 +91,7 @@ class SensorAlarm(CommandClass):
             # TODO: Add extend msg but openzwave don't known what : // uint16 time = (((uint16)_data[4])<<8) | (uint16)_data[5];  Don't know what to do with this yet.
             self.GetDriver.SendMsg(msg, MsgQueue.NoOp)
         elif _data[0] == SensorAlarmCmd.SupportedGet: 
-            msg = Msg("SensorAlarmCmd_SupportedReport", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+            msg = Msg("SensorAlarmCmd_SupportedReport", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             values = self._node.getCmdClassValues(self.GetCommandClassId)
             alarms = []
             for v in values : alarms.append(v._label)

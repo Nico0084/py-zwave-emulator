@@ -61,7 +61,7 @@ class Configuration(CommandClass):
 
     def ProcessMsg(self, _data, instance=1, multiInstanceData = []):
         if _data[0] == ConfigurationCmd.Get:
-            msg = Msg("ConfigurationCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+            msg = Msg("ConfigurationCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             param = _data[1]
             value = self._node.getValue(self.GetCommandClassId, instance, param)
             if value is not None :

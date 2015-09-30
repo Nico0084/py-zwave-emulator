@@ -248,7 +248,7 @@ class Meter(CommandClass):
                 if vInterval :
                     vInterval.setVal(time.time() - self._lastTime)
                     self._lastTime = time.time()
-            self.HandleReportChange("MeterCmd_Report", self, [MeterCmd.Get, value.index << 1], instance)
+            self.HandleReportChange("MeterCmd_Report", self, [MeterCmd.Get, value.index << 1], instance, MsgQueue.Poll)
             return True
         self._log.write(LogLevel.Warning, self, "Error in Config emulation JSON file. instance {0} don't exist.".format(instance))
         return False
@@ -259,7 +259,7 @@ class Meter(CommandClass):
         print 'DATA : ',  GetDataAsHex(_data),  " -- instance : ",  instance
         # Version 1 
         if _data[0] == MeterCmd.Get: 
-            msg = Msg("MeterCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+            msg = Msg("MeterCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             msgData = self.getDataMsg(_data,  instance)
             if multiInstanceData :
                 multiInstanceData[2] += len(msgData)
@@ -272,7 +272,7 @@ class Meter(CommandClass):
             self.GetDriver.SendMsg(msg, MsgQueue.NoOp)
         # Version 2
         elif _data[0] == MeterCmd.SupportedGet:
-            msg = Msg("MeterCmd_Supported_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+            msg = Msg("MeterCmd_Supported_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             if multiInstanceData :
                 multiInstanceData[2] += 4
                 for v in multiInstanceData : msg.Append(v)

@@ -88,7 +88,7 @@ class Association(CommandClass):
         if _data[0] == AssociationCmd.Get:
             group = self.getGroup(_data[1])
             if group is not None :
-                msg = Msg("MeterCmd_Supported_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+                msg = Msg("MeterCmd_Supported_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
                 msg.Append(TRANSMIT_COMPLETE_OK)
                 msg.Append(self.nodeId)
                 msg.Append(len(group['nodes']) + 5)
@@ -101,7 +101,7 @@ class Association(CommandClass):
                     msg.Append(n)
                 self.GetDriver.SendMsg(msg, MsgQueue.NoOp)    
             else :
-                msg = Msg("MeterCmd_Supported_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+                msg = Msg("MeterCmd_Supported_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
                 msg.Append(TRANSMIT_COMPLETE_NOT_IDLE)
                 msg.Append(self.nodeId)
                 msg.Append(2)
@@ -111,7 +111,7 @@ class Association(CommandClass):
                 self._log.write(LogLevel.Warning, self._node, "Group index {0} don't exist, Data : {1}".format(_data[1],  GetDataAsHex(_data)))
              
         elif _data[0] == AssociationCmd.GroupingsGet:
-            msg = Msg("MeterCmd_Supported_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+            msg = Msg("MeterCmd_Supported_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             msg.Append(TRANSMIT_COMPLETE_OK)
             msg.Append(self.nodeId)
             msg.Append(0x03)

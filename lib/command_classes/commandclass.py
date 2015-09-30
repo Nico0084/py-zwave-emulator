@@ -265,9 +265,9 @@ class CommandClass:
     def ProcessMsg(self, _data,  instance=1, multiInstanceData = []):
         self._log.write(LogLevel.Warning, self, "Base commandClass object, no processing message : {0}".format(GetDataAsHex(_data)))
         
-    def HandleReportChange(self, msgText, cmdClss, params, instance):
+    def HandleReportChange(self, msgText, cmdClss, params, instance, queue = MsgQueue.NoOp):
         self._log.write(LogLevel.Debug, self,  "HandleReportChange, {0} - {1} - instance {2}.".format(msgText,  cmdClss.GetCommandClassName, instance))
-        msg = Msg(msgText, self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+        msg = Msg(msgText, self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
         msgData = cmdClss.getDataMsg(params, instance)
         self._log.write(LogLevel.Debug, self,  "Data Value: {0}".format(GetDataAsHex(msgData)))
         if msgData :
@@ -285,7 +285,7 @@ class CommandClass:
             else :
                 msg.Append(len(msgData))
             for v in msgData : msg.Append(v)
-            self.GetDriver.SendMsg(msg, MsgQueue.NoOp)    
+            self.GetDriver.SendMsg(msg, queue)    
         else :
             self._log.write(LogLevel.Error, self, "No Data find to report it, {0} - {1} - instance {2}.".format(msgText,  cmdClss.GetCommandClassName, instance))
         
@@ -300,7 +300,7 @@ class CommandClass:
         if value : 
             self._log.write(LogLevel.Info, self, "Base commandClass object, polling {0} - {1}, instance {2}, value {3}.".format(self.GetCommandClassName, value.label,  poll['instance'], value.getVal()))
             value.setVal(value.getValueToPoll(poll['params']))
-            self.HandleReportChange("BaseCmd_Report", self, [self.getCmd,  value.index], value.instance)
+            self.HandleReportChange("BaseCmd_Report", self, [self.getCmd,  value.index], value.instance, MsgQueue.Poll)
         else : self._log.write(LogLevel.Warning, self, "Base commandClass object, Value not find, can't poll")
         return False
 

@@ -66,7 +66,7 @@ class Version(CommandClass):
 
     def ProcessMsg(self, _data, instance=1):
         if _data[0] == VersionCmd.Get:
-            msg = Msg( "VersionCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+            msg = Msg( "VersionCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             msg.Append(TRANSMIT_COMPLETE_OK)
             msg.Append(self.nodeId)
             msg.Append(0x07)
@@ -93,7 +93,7 @@ class Version(CommandClass):
             msg.Append(int(p[1]))
             self.GetDriver.SendMsg(msg, MsgQueue.NoOp)
         elif _data[0] == VersionCmd.CommandClassGet:
-            msg = Msg( "VersionCmd_CommandClass_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+            msg = Msg( "VersionCmd_CommandClass_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             clssId = _data[1]
             clss = self._node.GetCommandClass( _data[1])
             if clss is not None :

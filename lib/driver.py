@@ -39,6 +39,7 @@ from zwemulator.lib.log import LogLevel
 from ctrlemulator import OZWSerialEmul
 import time
 import threading
+import copy
 
 class ControllerInterface(EnumNamed):       # Specifies the controller's hardware interface 
     Unknown = 0
@@ -148,41 +149,31 @@ class MsgQueue(EnumNamed):
     Query = 5
     Poll = 6
     Count = 7	# Number of message queues
-        
-class MsgQueueCmd(EnumNamed):
-    SendMsg = 0
-##    QueryStageComplete = 1
-    Controller = 2
 
 class Driver:
 
     def __init__(self, manager, node,  data):
         self._manager = manager
         self.serialport = None
-        self.clientConnected = False
+        self._clientConnected = False
         self.xmlData = data
         self._startTime = 0
         self._node = node
         self.m_nodes = {}
-#        self.m_controller = FakeController(self.ProcessMsg, self._manager._stop)
         self.controller = None
         self.driverData = DriverData()
         # Create the message queue events
-        self.m_msgQueue = {}
-        for q in range(0, MsgQueue.Count -1):
-            self.m_msgQueue[q] = []
+        self.msgQueues = {}
+        for q in range(0, MsgQueue.Count):
+            self.msgQueues[q] = []
         self.m_currentMsg = None
         self.m_transmitOptions =TRANSMIT_OPTION_ACK | TRANSMIT_OPTION_AUTO_ROUTE | TRANSMIT_OPTION_EXPLORE
-        self.m_waitingForAck = False
-        self.m_expectedCallbackId = 0
-        self.m_expectedReply = 0
-        self.m_expectedCommandClassId = 0
-        self.m_expectedNodeId = 0
-        self.handleMsg = threading.Thread(None, self.handleMessages, "th_Handle_Driver_{0}_Msg".format(self.homeId), (), {})
-#        self.m_controller.start()
+        self._currentCallbackId = 0x0a
+        self.handleSendMsgQ = threading.Thread(None, self.sendMsgQueue, "th_Handle_Driver_{0}_Msg".format(self.homeId), (), {})
         self.running = False
+        self.setWaitingForAck(False)
         self._currentCtrlCommands = {}  #memorize callback informations with key zwave function
-        self.handleMsg.start()
+        self.handleSendMsgQ.start()
         print data
 
     _log = property(lambda self: self._manager._log)
@@ -261,13 +252,9 @@ class Driver:
             self.loadNodes()
 
     def Init(self):
-        self.m_waitingForAck = False
+        self.setWaitingForAck(False)
         # Open the controller
-        self.controller = OZWSerialEmul(self.serialport, stop = self._stop,  callback = self.HandleMsg,  log = self._log )
-#        self._log.write(LogLevel.Info, "  Opening controller {0}".format(self.serialport))
-#        time.sleep(.02)        # Simulate serial connection sequence
-#        self._log.write(LogLevel.Info, "Trying to open serial port {0}(attempt 1)".format(self.serialport))
-#        time.sleep(.05)
+        self.controller = OZWSerialEmul(self.serialport, stop = self._stop,  callback = self.HandleMsg, setWaitingForAck = self.setWaitingForAck, log = self._log, cbTimeOut = 10.0)
         return True
 
     def loadNodes(self):
@@ -296,7 +283,7 @@ class Driver:
             node.nodeId = self.GetFreeNextNodeId()
             node.homeId = self.homeId
             self.RegisterNode(node.nodeId, True)
-            msg = Msg( "Request FUNC_ID_ZW_ADD_NODE_TO_NETWORK", self.nodeId,  REQUEST, FUNC_ID_ZW_ADD_NODE_TO_NETWORK, False)
+            msg = Msg( "Request FUNC_ID_ZW_ADD_NODE_TO_NETWORK", self.nodeId,  REQUEST, FUNC_ID_ZW_ADD_NODE_TO_NETWORK)
             msg.Append(self._currentCtrlCommands[FUNC_ID_ZW_ADD_NODE_TO_NETWORK].callbackId) # TODO: Check if necessary in case of internal inclusion ?
             msg.Append(ADD_NODE_STATUS_ADDING_SLAVE)
             msg.Append(node.nodeId)
@@ -318,7 +305,7 @@ class Driver:
     def terminateIncludeNode(self):
         if self.IsInIncludeState :
             if self._currentCtrlCommands[FUNC_ID_ZW_ADD_NODE_TO_NETWORK].ctrlStateNum == ADD_NODE_STATUS_ADDING_SLAVE :
-                msg = Msg( "Request FUNC_ID_ZW_ADD_NODE_TO_NETWORK - ADD_NODE_STATUS_PROTOCOL_DONE", self.nodeId,  REQUEST, FUNC_ID_ZW_ADD_NODE_TO_NETWORK, False)
+                msg = Msg( "Request FUNC_ID_ZW_ADD_NODE_TO_NETWORK - ADD_NODE_STATUS_PROTOCOL_DONE", self.nodeId,  REQUEST, FUNC_ID_ZW_ADD_NODE_TO_NETWORK)
                 msg.Append(self._currentCtrlCommands[FUNC_ID_ZW_ADD_NODE_TO_NETWORK].callbackId)
                 msg.Append(ADD_NODE_STATUS_PROTOCOL_DONE)
                 msg.Append(self._currentCtrlCommands[FUNC_ID_ZW_ADD_NODE_TO_NETWORK].nodeId) 
@@ -334,21 +321,29 @@ class Driver:
     def setInInclusion(self): #TODO: add option to start function by type ADD_NODE_CONTROLLER, ADD_NODE_SLAVE, ADD_NODE_EXISTING
         """Put driver in inclusion mode"""
         if not self.IsInIncludeState :
-            callbackId = 0x45 # TODO: generate number
-            self.HandleAddNodeToNetworkRequest([REQUEST, FUNC_ID_ZW_ADD_NODE_TO_NETWORK, ADD_NODE_ANY | OPTION_HIGH_POWER, callbackId]) 
+            self.HandleAddNodeToNetworkRequest([REQUEST, FUNC_ID_ZW_ADD_NODE_TO_NETWORK, ADD_NODE_ANY | OPTION_HIGH_POWER, self.getNextCallbackId()]) 
         
     def setOutInclusion(self): #TODO: add option to terminat function by type ADD_NODE_STOP_FAILED
         """Exit driver of inclusion mode"""
         if self.IsInIncludeState :
-            callbackId = 0x45 # TODO: generate number
-            self.HandleAddNodeToNetworkRequest([REQUEST, FUNC_ID_ZW_ADD_NODE_TO_NETWORK, ADD_NODE_STOP | OPTION_HIGH_POWER, callbackId]) 
+            self.HandleAddNodeToNetworkRequest([REQUEST, FUNC_ID_ZW_ADD_NODE_TO_NETWORK, ADD_NODE_STOP | OPTION_HIGH_POWER, self.getNextCallbackId()]) 
 
-    def SendMsg(self, _msg,  _queue ):
-    # Queue a message to be sent to the Z-Wave PC Interface
-        item = MsgQueueItem()
-        item.m_command = MsgQueueCmd.SendMsg
-        item.m_msg = _msg
-        item.m_nodeId = _msg.GetTargetNodeId # TODO: dans la lib openzwave cette ligne n'existe pas !! ??
+    def setWaitingForAck(self, state):
+        self._waitingForAck = state
+#        print "setWaitingForAck ", state
+
+    def getWaitingForAck(self):
+#        print "getWaitingForAck ", self._waitingForAck
+        return self._waitingForAck
+        
+    def getNextCallbackId(self):
+        self._currentCallbackId += 1
+        if self._currentCallbackId >= 0xff: self._currentCallbackId = 0x0a
+        return self._currentCallbackId
+
+    def SendMsg(self, _msg,  _queue, firstNext = False, timing = 0):
+        # Queue a message to be sent to the Z-Wave PC Interface
+        item = MsgQueueItem(_msg,  _queue, firstNext, time.time()+timing)
         _msg.Finalize()
         node = self.GetNode(_msg.GetTargetNodeId)
         if node is not None:
@@ -361,7 +356,7 @@ class Driver:
                     ReleaseNodes()
                     return
         self._log.write(LogLevel.Detail, node, "Queuing ({0}) {1}".format(MsgQueue().getName(_queue), _msg.GetAsString()))
-        self.m_msgQueue[_queue].append(item)
+        self.msgQueues[_queue].append(item)
 
     def RegisterNode(self, _nodeId, newNode):
         """Queue a node to be interrogated for its setup details"""
@@ -372,25 +367,47 @@ class Driver:
         # Add the new node
         self.m_nodes[_nodeId] = self.GetNode(_nodeId)
         if newNode == True : self.m_nodes[_nodeId].SetAddingNode()
-        self._log.write(LogLevel.Info, self,  "Registered Node {0} in controller {1}. New Node: {2} ({3})".format(_nodeId,  self._manager.matchHomeID(self.homeId),
+        self._log.write(LogLevel.Info, self,  "{0}, Registered Node {1}. New Node: {2} ({3})".format(self._manager.matchHomeID(self.homeId),_nodeId, 
                             self.m_nodes[_nodeId].IsAddingNode, newNode))
 
     def HandleMsg(self, buffer):
         """Handle data read from the serial port"""
-
+        print 'Receive from controller : {0}'.format(self.controller.formatHex(buffer))
         if not buffer:
-            # Nothing to read
+            # Nothing to read, TimeOut
+            if self.getWaitingForAck() : 
+                if self.m_currentMsg is not None:
+                    self._log.write(LogLevel.Detail, "TimeOut on waiting for ACK. Try to resend last messgae...")
+                    self.m_currentMsg.msg.m_sendAttempts += 1
+                    if self.m_currentMsg.msg.m_sendAttempts < MAX_TRIES :
+                        self.driverData.m_dropped += 1
+                        self.sendMsg(self.m_currentMsg.msg, self.m_currentMsg.queue, True, 0)
+                    else :
+                        self._log.write(LogLevel.StreamDetail, node, "Max tries {0} reached, abord resend : ".format(MAX_TRIES,  self.m_currentMsg.msg.GetAsString()))
+                        self._log.write(LogLevel.Detail, "Connection client presumed lost on {0}.".format(self.serialport))
+                        self._clientConnected = False
+                    self.RemoveCurrentMsg()
+                else: 
+                    self._log.write(LogLevel.Detail, "No Current Message to send, client presumed lost on {0}.".format(self.serialport))
+                    self._clientConnected = False
+                self.setWaitingForAck(False)
             return False
         type = buffer[0]
-        self.clientConnected = True
+        if not self._clientConnected:
+            self._clientConnected = True
+            self._log.write(LogLevel.Detail, "New connection client detected on {0}.".format(self.serialport))
         if type == SOF:
             self.driverData.m_SOFCnt += 1
-            if self.m_waitingForAck:
+            if self.getWaitingForAck():
                 # This can happen on any normal network when a transmission overlaps an unexpected
                 # reception and the data in the buffer doesn't contain the ACK. The controller will
                 # notice and send us a CAN to retransmit.
                 self._log.write(LogLevel.Detail, "Unsolicited message received while waiting for ACK." )
-                self.m_ACKWaiting +=1
+                self.driverData.m_ACKWaiting +=1
+                self.setWaitingForAck(False)
+                self.controller.writeHex([CAN])
+                self._stop.wait(0.5)  # Wait 500ms to give time of resend
+                return False
             # Read the length byte.  Keep trying until we get it.
             try :
                 size = buffer[1]
@@ -407,7 +424,7 @@ class Driver:
             # Log the data
             nodeId = self.NodeFromMessage(buffer)
             if self.m_currentMsg is not None and nodeId == 0:
-                nodeId = self.m_currentMsg.GetTargetNodeId
+                nodeId = self.m_currentMsg.msg.GetTargetNodeId
             node = self.GetNode(nodeId)
             if node is None: node = self
             self._log.write(LogLevel.Detail, node, "  Received: {0}".format(self.controller.formatHex(buffer)))
@@ -426,39 +443,42 @@ class Driver:
                 self._log.write(LogLevel.Warning, node, "WARNING: Checksum incorrect - sending NAK" )
                 self.driverData.m_badChecksum += 1
                 self.controller.writeHex([NAK])
-#                m_controller->Purge()
         elif type == CAN:
             # This is the other side of an unsolicited ACK. As mentioned there if we receive a message
-            # just after we transmitted one, the controller will notice and tell us to retransmit here.
+            # just after we transmitted one, the client will notice and tell us to retransmit here.
             # Don't increment the transmission counter as it is possible the message will never get out
             # on very busy networks with lots of unsolicited messages being received. Increase the amount
             # of retries but only up to a limit so we don't stay here forever.
-            node = self.GetNode(self.m_currentMsg.GetTargetNodeId)
+            node = self.GetNode(self.m_currentMsg.msg.GetTargetNodeId)
             if node is None: node = self
             self._log.write(LogLevel.Detail, node, "CAN received...triggering resend" );
             self.driverData.m_CANCnt += 1
             if self.m_currentMsg is not None:
-                self.m_currentMsg.m_sendAttempts += 1
+                self.m_currentMsg.msg.m_sendAttempts += 1
+                if self.m_currentMsg.msg.m_sendAttempts < MAX_TRIES : 
+                    self.sendMsg(self.m_currentMsg.msg, self.m_currentMsg.queue, True, 0)
+                else :
+                    self._log.write(LogLevel.StreamDetail, node, "Max tries {0} reached, abord resend : ".format(MAX_TRIES,  self.m_currentMsg.msg.GetAsString()))
+                    self.RemoveCurrentMsg()                    
             else:
-                self._log.write(LogLevel.Warning, self, "m_currentMsg was NULL when trying to set MaxSendAttempts" );
-#            WriteMsg( "CAN" )
+                self._log.write(LogLevel.Warning, self, "CurrentMsg was NULL when trying to resend" );
         elif type == NAK:
             if self.m_currentMsg is not None:            
-                node = self.GetNode(self.m_currentMsg.GetTargetNodeId)
+                node = self.GetNode(self.m_currentMsg.msg.GetTargetNodeId)
             else : node = self
             self._log.write(LogLevel.Warning, node, "WARNING: NAK received...triggering resend" );
             self.driverData.m_NAKCnt += 1
         elif type == ACK:
             self.driverData.m_ACKCnt += 1
-            self.m_waitingForAck = False
             if self.m_currentMsg is None:
-                self._log.write(LogLevel.StreamDetail, self, "  ACK received" );
+                self._log.write(LogLevel.StreamDetail, self, "ACK received" );
             else:
-                node = self.GetNode(self.m_currentMsg.GetTargetNodeId)
-                self._log.write(LogLevel.StreamDetail, node, "  ACK received CallbackId 0x%.2x Reply 0x%.2x"%(self.m_expectedCallbackId, self.m_expectedReply))
+                node = self.GetNode(self.m_currentMsg.msg.GetTargetNodeId)
+                self._log.write(LogLevel.StreamDetail, node, "ACK received CallbackId 0x{0:02x} Reply 0x{1:02x}".format(self.m_currentMsg.msg.expectedCallbackId, self.m_currentMsg.msg.expectedReply))
                 self.RemoveCurrentMsg()
+#            self.setWaitingForAck(False)
         else :
-            self._log.write(LogLevel.Warning, "WARNING: Out of frame flow! (0x%.2x).  Sending NAK.", buffer[0] );
+            self._log.write(LogLevel.Warning, "WARNING: Out of frame flow! (0x%.2x). Sending NAK.", buffer[0] );
             self.driverData.m_OOFCnt += 1
             self.controller.writeHex([NAK])
         return True
@@ -473,7 +493,7 @@ class Driver:
             nodeId = 0
             node =None
         else :
-            nodeId = self.m_currentMsg.GetTargetNodeId
+            nodeId = self.m_currentMsg.msg.GetTargetNodeId
             try :
                 node = self.m_nodes[nodeId]
             except :
@@ -676,73 +696,54 @@ class Driver:
                 else:
                     self._log.write(LogLevel.Detail, "" )
                     self._log.write(LogLevel.Info, "**TODO: handle response for 0x%.2x** Please report this message."%function )
-
-        # Generic callback handling
-#        if handleCallback:
-#            if self.m_expectedCallbackId or self.m_expectedReply :
-#                if self.m_expectedCallbackId :
-#                    if self.m_expectedCallbackId == _data[2] :
-#                        self._log.write(LogLevel.Detail, node, "  Expected callbackId was received" )
-#                        self.m_expectedCallbackId = 0
-#                if self.m_expectedReply :
-#                    if self.m_expectedReply == _data[1] :
-#                        if self.m_expectedCommandClassId and (self.m_expectedReply == FUNC_ID_APPLICATION_COMMAND_HANDLER ) :
-#                            if self.m_expectedCallbackId == 0 and self.m_expectedCommandClassId == _data[5] and self.m_expectedNodeId == _data[3]:
-#                                self._log.write(LogLevel.Detail, node, "  Expected reply and command class was received" )
-#                                self.m_waitingForAck = False
-#                                self.m_expectedReply = 0
-#                                self.m_expectedCommandClassId = 0
-#                                self.m_expectedNodeId = 0
-#                        else:
-#                            if self.IsExpectedReply( _data[3] ):
-#                                self._log.write(LogLevel.Detail, node, "  Expected reply was received" )
-#                                self.m_expectedReply = 0
-#                                self.m_expectedNodeId = 0
-#                if not (self.m_expectedCallbackId or self.m_expectedReply):
-#                    self._log.write(LogLevel.Detail, node, "  Message transaction complete" )
-#                    self._log.write(LogLevel.Detail, "" )
         self.RemoveCurrentMsg()  # TODO: Not clearly handle for the momment so curentMsg is allways removed
 
     def RemoveCurrentMsg(self):
         """Delete the current message"""
         if self.m_currentMsg is not None:
-            self._log.write(LogLevel.Detail, self.GetNode(self.m_currentMsg.GetTargetNodeId), "Removing current message")
+            self._log.write(LogLevel.Detail, self.GetNode(self.m_currentMsg.msg.GetTargetNodeId), "Removing current message")
             self.m_currentMsg = None
         else :
             self._log.write(LogLevel.Detail, self,  "No current message to remove")
-        self.m_expectedCallbackId = 0
-        self.m_expectedCommandClassId = 0
-        self.m_expectedNodeId = 0
-        self.m_expectedReply = 0
-        self.m_waitingForAck = False
 
-    def handleMessages(self):
+    def sendMsgQueue(self):
         self.running = True
         cpt = 0
-        print "+++++++++++++ handleMessages Started ++++++++++++++/n"
+        print "+++++++++++++ handle Send Messages Queues Started ++++++++++++++/n"
         while not self._stop.isSet() and self.running:
-            if self.m_currentMsg is None:
-                for queue in self.m_msgQueue:
-                    if len(self.m_msgQueue[queue]) != 0 :
-                        delM = []
-                        for msgQ in self.m_msgQueue[queue]:
-                            if msgQ.m_command == MsgQueueCmd.SendMsg :
-                                if self.clientConnected :
-                                    self._log.write(LogLevel.Detail, self, "Queue {0}, Send message to Node {1} : {2}".format(MsgQueue().getName(queue), msgQ.m_nodeId,  msgQ.m_msg.GetAsString()))
-                                    self.m_currentMsg = msgQ.m_msg
-                                    self.controller.writeHex(msgQ.m_msg.m_buffer)
-                                else : 
-                                    self._log.write(LogLevel.Detail, self, "No Client connected don't send message from Queue {0}, to Node {1} : {2}".format(MsgQueue().getName(queue), msgQ.m_nodeId,  msgQ.m_msg.GetAsString()))
-                                delM.append(msgQ)
-                                cpt = 0
-                                break
-                        for d in delM:
-                            self.m_msgQueue[queue].remove(d)
+            if not self.getWaitingForAck() :
+                msgQ = self.getFirstMsg()
+                timeNow = time.time()
+                if msgQ is not None :
+                    if timeNow >= msgQ.timeOut :
+                        priority = " priority"
+                    else: msgQ = None
+                else :           
+                    for queue in self.msgQueues:
+                        if len(self.msgQueues[queue]) != 0 :
+                            for m in self.msgQueues[queue] :
+                                if timeNow >= m.timeOut :
+                                    priority = ""
+                                    msgQ = m
+                                    break
+                        if msgQ is not None : break
+                if msgQ is not None :
+                    if self._clientConnected :
+                            self._log.write(LogLevel.Detail, self, "Queue {0}, Send{1} message to Node {2} : {3}".format(MsgQueue().getName(msgQ.queue), priority, msgQ.nodeId,  msgQ.msg.GetAsString()))
+                            self.controller.writeHex(msgQ.msg.m_buffer)
+                            self.m_currentMsg = MsgQueueItem(copy.copy(msgQ.msg), msgQ.queue, msgQ.firstNext, 0)                                
+#                            self.setWaitingForAck(True)
+                    else : 
+                        self._log.write(LogLevel.Detail, self, "No Client connected send aborted on {0}".format(self.serialport))
+                    self.msgQueues[msgQ.queue].remove(msgQ)
+                    cpt = 0
+#            else :
+#                self._log.write(LogLevel.Detail, self, "Wait for ACK can't send on {0}".format(self.serialport))
             cpt += 1
             self._stop.wait(.01)
             if cpt == 500 : 
                 cpt = 0
-                print "Wait for message to send...."
+                print "Wait to message to send...."
         self._stop.set()
         print "HandleMessage terminate."
 
@@ -756,7 +757,7 @@ class Driver:
         
     def HandleSetVersionResponse(self):
         #[0x01, 0x10, 0x01, 0x15, 0x5a, 0x2d, 0x57, 0x61, 0x76, 0x65, 0x20, 0x32, 0x2e, 0x37, 0x38, 0x00, 0x01, 0x9b]
-        msg = Msg( "Response to ZW_GET_VERSION", self.nodeId,  RESPONSE, FUNC_ID_ZW_GET_VERSION, False)
+        msg = Msg( "Response to ZW_GET_VERSION", self.nodeId,  RESPONSE, FUNC_ID_ZW_GET_VERSION)
         for  c in self._manager.getZwVersion(self.homeId): msg.Append(ord(c))
         msg.Append(0)
         msg.Append(1) # LibraryType 1 = Static Controller
@@ -764,7 +765,7 @@ class Driver:
         
     def HandleMemorySetIdResponse(self):
         #[0x01, 0x08, 0x01, 0x20, 0x01, 0x4d, 0x0f, 0x18, 0x01, 0x8c]
-        msg = Msg( "Response to ZW_MEMORY_GET_ID", self.nodeId,  RESPONSE, FUNC_ID_ZW_MEMORY_GET_ID, False)
+        msg = Msg( "Response to ZW_MEMORY_GET_ID", self.nodeId,  RESPONSE, FUNC_ID_ZW_MEMORY_GET_ID)
         msg.Append((self.homeId & 0xff000000)>>24)
         msg.Append((self.homeId & 0x00ff0000)>>16)
         msg.Append((self.homeId & 0x0000ff00)>>8)
@@ -774,13 +775,13 @@ class Driver:
         
     def HandleSetControllerCapabilitiesResponse(self):
         #[0x01, 0x04, 0x01, 0x05, 0x1c, 0xe3]
-        msg = Msg( "Response to GET_CONTROLLER_CAPABILITIES", self.nodeId,  RESPONSE, FUNC_ID_ZW_GET_CONTROLLER_CAPABILITIES, False)
+        msg = Msg( "Response to GET_CONTROLLER_CAPABILITIES", self.nodeId,  RESPONSE, FUNC_ID_ZW_GET_CONTROLLER_CAPABILITIES)
         msg.Append(self.xmlData['controllerCapabilities'])
         self.SendMsg(msg, MsgQueue.NoOp)
                 
     def HandleSetSerialAPICapabilitiesResponse(self):
         #[0x01, 0x2b, 0x01, 0x07, 0x03, 0x07, 0x00, 0x86, 0x00, 0x02, 0x00, 0x01,     0xfe, 0x80, 0xfe, 0x88, 0x0f, 0x00, 0x00, 0x00, 0xfb, 0x97, 0x7f, 0x82, 0x07, 0x00, 0x00, 0x80, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc2]
-        msg = Msg( "Response to SERIAL_API_GET_CAPABILITIES", self.nodeId,  RESPONSE, FUNC_ID_SERIAL_API_GET_CAPABILITIES, False)
+        msg = Msg( "Response to SERIAL_API_GET_CAPABILITIES", self.nodeId,  RESPONSE, FUNC_ID_SERIAL_API_GET_CAPABILITIES)
         sAPIVers = self._manager.getSerialAPIVersion(self.homeId)
         msg.Append(sAPIVers[0])
         msg.Append(sAPIVers[1])
@@ -801,7 +802,7 @@ class Driver:
                 
     def HandleSetSUCNodeIdResponse(self):
         # [0x01, 0x04, 0x01, 0x56, 0x01, 0xad]
-        msg = Msg( "Response to GET_SUC_NODE_ID", self.nodeId,  RESPONSE, FUNC_ID_ZW_GET_SUC_NODE_ID, False)
+        msg = Msg( "Response to GET_SUC_NODE_ID", self.nodeId,  RESPONSE, FUNC_ID_ZW_GET_SUC_NODE_ID)
         msg.Append(self.nodeId)
         self.SendMsg(msg, MsgQueue.NoOp)
         
@@ -811,7 +812,7 @@ class Driver:
         # 0x01, 0x23, 0x01, 0x1c, 0xec, 0xc5, 0x3a, 0x82, 0xf9, 0x11, 0xfb, 0x3b, 0xf8, 0xd5, 0xf9, 0x2e, 0x9b, 0x56, 0x72, 0x12, 0xd5, 0x21, 0x4b, 0x64, 0x51, 0xef, 0xc9, 0x26, 0x11, 0x90, 0x5c, 0x0c, 0x46, 0x9a, 0xe1, 0x9f, 0xd6
         # 0x01, 0x23, 0x01, 0x1c, 0x91, 0x91, 0xa2, 0x2c, 0x08, 0x31, 0x49, 0x88, 0x1a, 0x3b, 0x74, 0xdc, 0x7d, 0xd1, 0x12, 0x49, 0xcf, 0x49, 0xfd, 0x4d, 0x94, 0xb9, 0xf1, 0xa6, 0xb1, 0x81, 0x8f, 0x74, 0x02, 0x42, 0xe3, 0x00, 0xed
         from random import randint
-        msg = Msg( "Response to ZW_GET_RANDOM", self.nodeId,  RESPONSE, FUNC_ID_ZW_GET_RANDOM, False)
+        msg = Msg( "Response to ZW_GET_RANDOM", self.nodeId,  RESPONSE, FUNC_ID_ZW_GET_RANDOM)
         msg.Append(_data[2]) # nodeId
         msg.Append(0x20) # 32 bytes
         for i in range(32) :  # Generate 32 bytes random
@@ -821,7 +822,7 @@ class Driver:
     def HandleSerialAPISetInitDataResponse(self):
         #[0x01, 0x25, 0x01, 0x02, 0x05, 0x08, 0x1d, 0xe9, 0x3f, 0x0e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x01, 0x13]
                                                          #0xe9, 0x3f, 0x0e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-        msg = Msg( "Response to SERIAL_API_GET_INIT_DATA", self.nodeId,  RESPONSE, FUNC_ID_SERIAL_API_GET_INIT_DATA, False)
+        msg = Msg( "Response to SERIAL_API_GET_INIT_DATA", self.nodeId,  RESPONSE, FUNC_ID_SERIAL_API_GET_INIT_DATA)
         msg.Append(5) # Version of the Serial API used by the controller.
         msg.Append(self.xmlData['apiCapabilities'])
         msg.Append(NUM_NODE_BITFIELD_BYTES)
@@ -837,13 +838,13 @@ class Driver:
         self.SendMsg(msg, MsgQueue.NoOp)
          
     def HandleSerialApiSetTimeoutsResponse(self, _data):
-        msg = Msg( "Response to SERIAL_API_SET_TIMEOUTS", self.nodeId,  RESPONSE, FUNC_ID_SERIAL_API_SET_TIMEOUTS, False)
+        msg = Msg( "Response to SERIAL_API_SET_TIMEOUTS", self.nodeId,  RESPONSE, FUNC_ID_SERIAL_API_SET_TIMEOUTS)
         msg.Append(_data[2])
         msg.Append(_data[3])
         self.SendMsg(msg, MsgQueue.NoOp)
         
     def HandleSerialAPISoftResetResponse(self, _data):
-        msg = Msg( "Response to FUNC_ID_SERIAL_API_SOFT_RESET", self.nodeId,  RESPONSE, FUNC_ID_SERIAL_API_SOFT_RESET, False)
+        msg = Msg( "Response to FUNC_ID_SERIAL_API_SOFT_RESET", self.nodeId,  RESPONSE, FUNC_ID_SERIAL_API_SOFT_RESET)
         self.SendMsg(msg, MsgQueue.NoOp)
         # Remove the message from the queue, because there is no acknowledged.
         self.RemoveCurrentMsg()
@@ -854,38 +855,50 @@ class Driver:
 #        SUC_UPDATE_WAIT	        	=	0x02
 #        SUC_UPDATE_DISABLED		=	0x03
 #        SUC_UPDATE_OVERFLOW	=	0x04
-        msg = Msg( "Response to FUNC_ID_ZW_REQUEST_NETWORK_UPDATE", self.nodeId,  RESPONSE, FUNC_ID_ZW_REQUEST_NETWORK_UPDATE, False)
-        msg.Append(SUC_UPDATE_DONE)
-        self.SendMsg(msg, MsgQueue.NoOp)
+        msg = Msg( "Response to FUNC_ID_ZW_REQUEST_NETWORK_UPDATE", self.nodeId,  RESPONSE, FUNC_ID_ZW_REQUEST_NETWORK_UPDATE)
+        msg.Append(_data[2]) # callbackId
+        msg.Append(SUC_UPDATE_WAIT)
+        msg.SetExpectedCallBack(_data[-2])
+        self.SendMsg(msg, MsgQueue.Command, True)
+        # Handle A response done
+        threading.Thread(None, self.emulCycleCmd, "th_handleEmulCycleCmd_ctrl_{0}.".format(self.homeId), (),
+                             { 'msgParams': {'logText' : "Response to FUNC_ID_ZW_REQUEST_NETWORK_UPDATE",
+                                                     'targetNodeId': 0x00,
+                                                     'msgType': REQUEST,
+                                                     'function' : FUNC_ID_ZW_REQUEST_NETWORK_UPDATE, 
+                                                     'callbackId': _data[-2]}, 
+                                'listState': [SUC_UPDATE_DONE],
+                                'timings': [1], 
+                                'queues' : [MsgQueue.Command], 
+                                'firstNext':  [True]
+                             }).start()
 
     def HandleSetNodeProtocolInfoResponse(self, _data):
         """Process a response from the Z-Wave PC interface"""
         # The node that the protocol info response is for is not included in the message.
         # We have to assume that the node is the same one as in the most recent request.
-        msg = Msg( "Response to GET_NODE_PROTOCOL_INFO", self.nodeId,  RESPONSE, FUNC_ID_ZW_GET_NODE_PROTOCOL_INFO, False)
+        msg = Msg( "Response to GET_NODE_PROTOCOL_INFO", self.nodeId,  RESPONSE, FUNC_ID_ZW_GET_NODE_PROTOCOL_INFO)
         node = self.GetNode(_data[2])
         if node is None:
             self._log.write(LogLevel.Warning, "WARNING: nodeId {0} don't exist - ignoring.".format(_data[2]))
             return
         msg = node.getMsgProtocolInfo()        
-        self.SendMsg(msg, MsgQueue.NoOp)
+        self.SendMsg(msg, MsgQueue.Command)
 
     def HandleSendDataResponse(self, _data, _replication):
         self._log.write(LogLevel.Debug, self,  "    HandleSendDataResponse : ", GetDataAsHex(_data))
         node = self.GetNode(_data[2])
         if node is None:
-            msg = Msg( "Z-Wave stack for cmdClass 0x%.2x ZW_SEND_DATA"% _data[4], _data[2],  RESPONSE, FUNC_ID_ZW_SEND_DATA, False)
+            msg = Msg( "Z-Wave stack for cmdClass 0x%.2x ZW_SEND_DATA"% _data[4], _data[2],  RESPONSE, FUNC_ID_ZW_SEND_DATA)
             msg.Append(TRANSMIT_OPTION_ACK) # 0x01
             self.SendMsg(msg, MsgQueue.NoOp)
             self._log.write(LogLevel.Warning, "WARNING: nodeId {0} don't exist - ignoring.".format(_data[2]))
-            msg = Msg( "Z-Wave stack no route ZW_SEND_DATA", _data[2],  REQUEST, FUNC_ID_ZW_SEND_DATA, False)
+            msg = Msg( "Z-Wave stack no route ZW_SEND_DATA", _data[2],  REQUEST, FUNC_ID_ZW_SEND_DATA)
             msg.Append(_data[-2])
             msg.Append(TRANSMIT_COMPLETE_NOROUTE)
+            msg.SetExpectedCallBack(_data[-2], _data[6], _data[4])
             self.SendMsg(msg, MsgQueue.NoOp)
             return
-        self.m_expectedCommandClassId = _data[4]
-        self.m_expectedReply = _data[6]
-        self.m_expectedCallbackId = _data[-2]
         node.HandleMsgSendDataResponse(_data)
 
     def HandleRequestNodeInfo(self, _data):
@@ -893,27 +906,28 @@ class Driver:
         if node is None:
             self._log.write(LogLevel.Warning, "WARNING: nodeId {0} don't exist - ignoring.".format(_data[2]))
             return
-        msg = Msg( "Z-Wave stack for ZW_REQUEST_NODE_INFO", node.nodeId, RESPONSE, FUNC_ID_ZW_REQUEST_NODE_INFO, False)
+        msg = Msg( "Z-Wave stack for ZW_REQUEST_NODE_INFO", node.nodeId, RESPONSE, FUNC_ID_ZW_REQUEST_NODE_INFO)
         msg.Append(node.nodeId)
-        self.SendMsg(msg, MsgQueue.NoOp)  # Ack for request node info
+        self.SendMsg(msg, MsgQueue.Command)  # Ack for request node info
         msg = node.getMsgNodeInfo()
-        if msg is not None : self.SendMsg(msg, MsgQueue.NoOp)
+        if msg is not None : self.SendMsg(msg, MsgQueue.Command)
 
     def HandleNodeInformationResponse(self, _data):
         node = self.GetNode(_data[2])
-#        msg = Msg( "Z-Wave stack for node {0} ZW_SEND_DATA".format(_data[2]), self.nodeId,  RESPONSE, FUNC_ID_ZW_SEND_DATA, False)
+#        msg = Msg( "Z-Wave stack for node {0} ZW_SEND_DATA".format(_data[2]), self.nodeId,  RESPONSE, FUNC_ID_ZW_SEND_DATA)
 #        msg.Append(TRANSMIT_OPTION_ACK) # 0x01
 #        self.SendMsg(msg, MsgQueue.NoOp)
         if node is None:
-            msg = Msg( "Warning, Node {0} Information Request fail".format(_data[2]), self, REQUEST, FUNC_ID_ZW_SEND_NODE_INFORMATION, False)
+            msg = Msg( "Warning, Node {0} Information Request fail".format(_data[2]), self, REQUEST, FUNC_ID_ZW_SEND_NODE_INFORMATION)
             msg.Append(_data[-2])
             msg.Append(TRANSMIT_COMPLETE_NOROUTE)#TRANSMIT_COMPLETE_NOROUTE
 #            msg.Append(_data[2])
         else:
-            msg = Msg( "Node Information Request Success", node, REQUEST, FUNC_ID_ZW_SEND_NODE_INFORMATION, False)
+            msg = Msg( "Node Information Request Success", node, REQUEST, FUNC_ID_ZW_SEND_NODE_INFORMATION)
             msg.Append(_data[-2])
             msg.Append(TRANSMIT_COMPLETE_OK)
 #            msg.Append(_data[2])
+        msg.SetExpectedCallBack(_data[-2])
         self.SendMsg(msg, MsgQueue.NoOp)
 #        msg = node.getMsgNodeInfo(_data)
     
@@ -923,54 +937,56 @@ class Driver:
             self._log.write(LogLevel.Warning, "WARNING: nodeId {0} don't exist - ignoring.".format(_data[2]))
             return
         msg = node.getMsgRoutingInfo(_data)
-        self.SendMsg(msg, MsgQueue.NoOp)
+        self.SendMsg(msg, MsgQueue.Command)
         
     def HandleDeleteReturnRouteRequest(self, _data):
         node = self.GetNode(_data[2])
-        self.m_expectedCallbackId = _data[-2]
-        msg = Msg( "Z-Wave stack for ZW_DELETE_RETURN_ROUTE", _data[2],  RESPONSE, FUNC_ID_ZW_DELETE_RETURN_ROUTE, False)
+        msg = Msg( "Z-Wave stack for ZW_DELETE_RETURN_ROUTE", _data[2],  RESPONSE, FUNC_ID_ZW_DELETE_RETURN_ROUTE)
         msg.Append(TRANSMIT_OPTION_ACK)
-        self.SendMsg(msg, MsgQueue.NoOp)  # Ack for request
-        msg = Msg( "Request with callback ID 0x%.2x for ZW_DELETE_RETURN_ROUTE"%self.m_expectedCallbackId, _data[2],  REQUEST, FUNC_ID_ZW_DELETE_RETURN_ROUTE, False)
-        msg.Append(self.m_expectedCallbackId)
+        msg.SetExpectedCallBack(_data[-2])
+        self.SendMsg(msg, MsgQueue.Command)  # Ack for request
+        msg = Msg( "Request with callback ID 0x{0:02x} for ZW_DELETE_RETURN_ROUTE".format(msg.expectedCallbackId), _data[2],  REQUEST, FUNC_ID_ZW_DELETE_RETURN_ROUTE)
+        msg.SetExpectedCallBack(_data[-2])
+        msg.Append(msg.expectedCallbackId)
         if node is not None :
             msg.Append(TRANSMIT_COMPLETE_OK)
-            self.SendMsg(msg, MsgQueue.NoOp)
+            self.SendMsg(msg, MsgQueue.Command)
             return False
         else :
             msg.Append(TRANSMIT_COMPLETE_NOROUTE)
-            self.SendMsg(msg, MsgQueue.NoOp)
+            self.SendMsg(msg, MsgQueue.Command)
             return False
         
     def HandleAssignReturnRouteRequest(self, _data):
         node = self.GetNode(_data[2])
-        self.m_expectedCallbackId = _data[-2]
-        msg = Msg( "Z-Wave stack for ZW_ASSIGN_RETURN_ROUTE", _data[2],  RESPONSE, FUNC_ID_ZW_ASSIGN_RETURN_ROUTE, False)
+        msg = Msg( "Z-Wave stack for ZW_ASSIGN_RETURN_ROUTE", _data[2],  RESPONSE, FUNC_ID_ZW_ASSIGN_RETURN_ROUTE)
+        msg.SetExpectedCallBack(_data[-2])
         msg.Append(TRANSMIT_OPTION_ACK)
-        self.SendMsg(msg, MsgQueue.NoOp)  # Ack for request
-        msg = Msg( "Request with callback ID 0x%.2x for ZW_ASSIGN_RETURN_ROUTE"%self.m_expectedCallbackId, _data[2],  REQUEST, FUNC_ID_ZW_ASSIGN_RETURN_ROUTE, False)
+        self.SendMsg(msg, MsgQueue.Command)  # Ack for request
+        msg = Msg( "Request with callback ID 0x{0:02x} for ZW_ASSIGN_RETURN_ROUTE".format(msg.expectedCallbackId), _data[2],  REQUEST, FUNC_ID_ZW_ASSIGN_RETURN_ROUTE)
+        msg.SetExpectedCallBack(_data[-2])
         if node is not None :
             node.route = [_data[3]]
-            msg.Append(self.m_expectedCallbackId)
+            msg.Append(msg.expectedCallbackId)
             msg.Append(TRANSMIT_COMPLETE_OK)
-            self.SendMsg(msg, MsgQueue.NoOp)
+            self.SendMsg(msg, MsgQueue.Command)
             return False
         else :
-            msg.Append(self.m_expectedCallbackId)
+            msg.Append(msg.expectedCallbackId)
             msg.Append(TRANSMIT_COMPLETE_NOROUTE)
-            self.SendMsg(msg, MsgQueue.NoOp)
+            self.SendMsg(msg, MsgQueue.Command)
             return False
 
     def HandleNodeNeighborUpdateResponse(self, _data):
         node = self.GetNode(_data[2])
-        self.m_expectedCallbackId = _data[-2]
-#        msg = Msg( "Z-Wave stack for FUNC_ID_ZW_REQUEST_NODE_NEIGHBOR_UPDATE_OPTIONS", _data[2],  RESPONSE, FUNC_ID_ZW_REQUEST_NODE_NEIGHBOR_UPDATE_OPTIONS, False)
+#        msg = Msg( "Z-Wave stack for FUNC_ID_ZW_REQUEST_NODE_NEIGHBOR_UPDATE_OPTIONS", _data[2],  RESPONSE, FUNC_ID_ZW_REQUEST_NODE_NEIGHBOR_UPDATE_OPTIONS,)
         if node is not None :
 #            msg.Append(self.m_expectedCallbackId)
 #            msg.Append(TRANSMIT_OPTION_ACK)
 #            self.SendMsg(msg, MsgQueue.NoOp)  # Ack for request
-            msg = node.getMsgNodeNeighborUpdate(self.m_expectedCallbackId)
-            self.SendMsg(msg, MsgQueue.NoOp)
+            msg = node.getMsgNodeNeighborUpdate(_data[-2])
+            msg.SetExpectedCallBack(_data[-2])
+            self.SendMsg(msg, MsgQueue.Command, True)
             return False
         else : # Handle A response fail
             threading.Thread(None, self.emulCycleCmd, "th_handleEmulCycleCmd_ctrl_{0}.".format(self.homeId), (),
@@ -980,7 +996,9 @@ class Driver:
                                                          'function' : FUNC_ID_ZW_REQUEST_NODE_NEIGHBOR_UPDATE_OPTIONS, 
                                                          'callbackId': _data[-2]}, 
                                     'listState': [REQUEST_NEIGHBOR_UPDATE_STARTED, REQUEST_NEIGHBOR_UPDATE_FAILED],
-                                    'timings': [0.0, 2.0]
+                                    'timings': [0.0, 2.0], 
+                                    'queues' : [MsgQueue.Command, MsgQueue.Command], 
+                                    'firstNext':  [True, True]
                                  }).start()
             return False
             
@@ -993,7 +1011,7 @@ class Driver:
         #ADD_NODE_STOP			=		0x05
         #ADD_NODE_STOP_FAILED	=		0x06
         addType = _data[2] & 0x07  
-        msg = Msg( "Z-Wave stack for FUNC_ID_ZW_ADD_NODE_TO_NETWORK", 0xff,  REQUEST, FUNC_ID_ZW_ADD_NODE_TO_NETWORK, False)
+        msg = Msg( "Z-Wave stack for FUNC_ID_ZW_ADD_NODE_TO_NETWORK", 0xff,  REQUEST, FUNC_ID_ZW_ADD_NODE_TO_NETWORK)
         if addType == ADD_NODE_STOP :
             if FUNC_ID_ZW_ADD_NODE_TO_NETWORK in self._currentCtrlCommands :
                 msg.Append(self._currentCtrlCommands[FUNC_ID_ZW_ADD_NODE_TO_NETWORK].callbackId)
@@ -1019,17 +1037,23 @@ class Driver:
         # wait for inclusion in a thread with stop function and timeout ?
         # memorise callbackID
         
-    def emulCycleCmd(self, msgParams = {},  listState = [], timings = []):
+    def getFirstMsg(self):
+        for queue in self.msgQueues :
+            for msgQ in self.msgQueues[queue] :
+                if msgQ.firstNext : return msgQ
+        return None
+
+    def emulCycleCmd(self, msgParams = {},  listState = [], timings = [],  queues = [],  firstNext = False):
         self._log.write(LogLevel.Detail, self, "Start command emulation :{0} ({1})".format(getFuncName(msgParams['function']), GetDataAsHex([msgParams['function']])))
         i = 0
         print "++++ Controller emulCycleCmd kwargs : ", msgParams, listState, timings
         for state in listState:
             self._stop.wait(timings[i])
             if not self._stop.isSet() :
-                msg = Msg(msgParams['logText'], msgParams['targetNodeId'], msgParams['msgType'], msgParams['function'], False)
+                msg = Msg(msgParams['logText'], msgParams['targetNodeId'], msgParams['msgType'], msgParams['function'])
                 if 'callbackId' in msgParams: msg.Append(msgParams['callbackId'])
                 msg.Append(listState[i])
-                self.SendMsg(msg, MsgQueue.NoOp)
+                self.SendMsg(msg, queues[i], firstNext[i], timings[i])
                 i += 1
             else : break
             
@@ -1067,19 +1091,22 @@ class Msg:
     
     m_MultiChannel			= 0x01		# Indicate MultiChannel encapsulation
     m_MultiInstance			= 0x02		# Indicate MultiInstance encapsulation
+
     
-    def __init__(self,  _logText, _targetNodeId, _msgType, _function , _bCallbackRequired, _bReplyRequired = True, _expectedReply = 0, _expectedCommandClassId = 0):
+    def __init__(self,  logText, targetNodeId, msgType, function, _bReplyRequired = True, _expectedReply = 0, _expectedCommandClassId = 0):
             
-        self.s_nextCallbackId = 1
+#        Callback for normal messages start at 10. Special Messages using a Callback prior to 10 */
+        self.s_nextCallbackId = 10
         
-        self.m_logText = _logText
-        self.m_bFinal= False
-        self.m_bCallbackRequired =_bCallbackRequired
-        self.m_callbackId = 0
-        self.m_expectedReply = 0
-        self.m_expectedCommandClassId = _expectedCommandClassId
+        self._logText = logText
+        self._msgType = msgType
+        self._function = function
+        self._bFinal= False
+        self._expectedCallbackId = 0
+        self._expectedReply = _expectedReply
+        self._expectedCommandClassId = _expectedCommandClassId
         self.m_length = 4
-        self.m_targetNodeId = _targetNodeId
+        self._targetNodeId = targetNodeId
         self.m_sendAttempts = 0
         self.m_maxSendAttempts = MAX_TRIES
         self.m_instance = 1
@@ -1087,39 +1114,38 @@ class Msg:
         self.m_flags = 0
         if _bReplyRequired:
             # Wait for this message before considering the transaction complete 
-            self.m_expectedReply = _expectedReply if _expectedReply else _function
-        self.m_buffer = [SOF, 0, _msgType, _function]
+            self._expectedReply = _expectedReply if _expectedReply else self._function
+        self.m_buffer = [SOF, 0, self._msgType, self._function]
         
-    GetTargetNodeId = property(lambda self: self.m_targetNodeId)
+    GetTargetNodeId = property(lambda self: self._targetNodeId)
+    expectedCallbackId = property(lambda self: self._expectedCallbackId)
+    expectedReply = property(lambda self: self._expectedReply)
+    expectedCommandClassId = property(lambda self: self._expectedCommandClassId)
+       
         
+    def SetExpectedCallBack(self, expectedCallbackId = 0, expectedReply = 0, expectedCommandClassId = 0):
+        self._expectedCallbackId = expectedCallbackId
+        self._expectedReply = expectedReply
+        self._expectedCommandClassId = expectedCommandClassId
+
     def Finalize(self):
         """Fill in the length and checksum values for the message"""
 
-        if not self.m_bFinal: # Already finalized ?
+        if not self._bFinal: # Already finalized ?
            # Deal with Multi-Channel/Instance encapsulation
             if (self.m_flags & ( self.m_MultiChannel | self.m_MultiInstance ) ) != 0:
-                MultiEncap()
-            # Add the callback id
-            if self.m_bCallbackRequired:
-                # Set the length byte
-                self.m_buffer[1] = self.m_length		# Length of following data
-                if 0 == self.s_nextCallbackId:
-                    self.s_nextCallbackId = 1
-                self.m_buffer.append(self.s_nextCallbackId)
-                self.m_length += 1
-                self.m_callbackId = self.s_nextCallbackId
-                self.s_nextCallbackId += 1
-            else:
-                # Set the length byte
-                self.m_buffer[1] = self.m_length - 1		# Length of following data
+#                MultiEncap()
+                pass
+            # Set the length byte
+            self.m_buffer[1] = self.m_length - 1		# Length of following data
             # Calculate the checksum
             checksum = 0xff
             for i in range(1, self.m_length) :
                 checksum ^= self.m_buffer[i]
             self.m_buffer.append(checksum)
             self.m_length += 1
-            self.m_bFinal = True
-            
+            self._bFinal = True
+
     def Append(self,  _data):
         self.m_buffer.append(int(_data))
         self.m_length += 1
@@ -1130,9 +1156,9 @@ class Msg:
         return 0
 
     def GetAsString(self):
-        strVal = self.m_logText
-        if self. m_targetNodeId != 0xff:
-            strVal += " (Node={0})".format(self.m_targetNodeId)
+        strVal = self._logText
+        if self. _targetNodeId != 0xff:
+            strVal += " (Node={0})".format(self._targetNodeId)
         strVal += ": "
         for i in range(0, self.m_length) :
             if i : strVal += ", "
@@ -1140,78 +1166,15 @@ class Msg:
         return strVal
         
     def IsNoOperation(self):
-        return (self.m_bFinal and (self.m_length==11) and (self.m_buffer[3]==0x13) and (self.m_buffer[6]==0x00) and (self.m_buffer[7]==0x00))
-    
-    def UpdateCallbackId(self):
-        """If this message has a callback ID, increment it and recalculate the checksum"""
-        if self.m_bCallbackRequired:
-            # update the callback ID
-            self.m_buffer[m_length-2] = self.s_nextCallbackId
-            self.m_callbackId = self.s_nextCallbackId
-            self.s_nextCallbackId += 1
-            # Recalculate the checksum
-            checksum = 0xff
-            for i in range(1,  self.m_length-1): 
-                checksum ^= self.m_buffer[i]
-            self.m_buffer[self.m_length-1] = checksum
+        return (self._bFinal and (self.m_length==11) and (self.m_buffer[3]==0x13) and (self.m_buffer[6]==0x00) and (self.m_buffer[7]==0x00))
 
 class MsgQueueItem:
     
-    def __init__(self):
-        
-        self.m_command = 0xff
-        self.m_msg = None
-        self.m_nodeId = 0
-        self.m_retry = False
-        self.m_cci = None
-        
-    def __eq__(self, _other) :
-        """Surcharge de =="""
-        if _other.m_command == self.m_command:
-            if self.m_command == MsgQueueCmd.SendMsg:
-                return (_other.m_msg == self.m_msg)
-            elif self.m_command == MsgQueueCmd.Controller:
-                return (_other.m_cci.m_controllerCommand == self.m_cci.m_controllerCommand) and (_other.m_cci.m_controllerCallback == self.m_cci.m_controllerCallback)
-        return False
+    def __init__(self, msg, queue, firstNext = False, timeOut = 0):
+        self.msg = msg
+        self.firstNext = firstNext
+        self.queue = queue
+        self.timeOut = timeOut
 
-class Event:
-    
-    def __init__(self,  msgQ,  delais):
-        self.msgQ = msgQ
-        self.waitTime = time.time() + delais
-        self.m_manualReset = True
-        self.m_isSignaled = False
-        self.m_waitingThreads = 0
-    
-    def handleResponse(self, callback):
-        self.m_isSignaled = True
-        callback(RESPONSE,  self.msgQ)
-    
-class FakeController(threading.Thread):
-    
-    def __init__(self, callback, stop):
-        threading.Thread.__init__(self)
-        self._callback = callback
-        self._stop = stop
-        self._event = []
-        
-    def run(self):
-        running = True
-        print "+++++++++++++ FakeController Started ++++++++++++++"
-        while not self._stop.isSet() and running:
-            if self._event :
-                removed = []
-                for event in self._event:
-                    if event.waitTime >= time.time() and not event.m_isSignaled:
-                        event.handleResponse(self._callback)
-                        removed.append(event)
-                print removed
-                print self._event
-                for e in removed: self._event.remove(e)
-                removed = []
-            else :
-                self._stop.wait(0.1)
-                
-    def addEvent(self,  msgQ,  delais = 100):
-        self._event.append(Event(msgQ, delais))
-            
+    nodeId  = property(lambda self: 0 if self.msg is None else self.msg._targetNodeId)  
+

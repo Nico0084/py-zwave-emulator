@@ -126,7 +126,7 @@ class Powerlevel(CommandClass):
 
     def ProcessMsg(self, _data, instance=1, multiInstanceData = []):
         if _data[0] == PowerlevelCmd.Get:
-            msg = Msg("PowerlevelCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+            msg = Msg("PowerlevelCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             msgData = self.getDataMsg(_data, instance)
             if msgData :
                 if multiInstanceData :

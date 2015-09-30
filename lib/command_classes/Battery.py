@@ -59,7 +59,7 @@ class Battery(CommandClass):
 
     def ProcessMsg(self, _data, instance=1, multiInstanceData = []):
         if _data[0] == BatteryCmd.Get:
-            msg = Msg("BatteryCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+            msg = Msg("BatteryCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             value = self._node.getValue(self.GetCommandClassId, instance, 0) # Battery index is allways 0
             if value is not None :
                 msg.Append(TRANSMIT_COMPLETE_OK)

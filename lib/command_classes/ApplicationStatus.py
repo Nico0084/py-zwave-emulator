@@ -67,7 +67,7 @@ class ApplicationStatus(CommandClass):
                 2 : Request queued, will be executed later
                 else : Unknown status
         """
-        msg = Msg("ApplicationStatusCmd_Busy", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+        msg = Msg("ApplicationStatusCmd_Busy", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
         msg.Append(TRANSMIT_COMPLETE_OK)
         msg.Append(self.nodeId)
         msg.Append(3 if code != 1 else 4)
@@ -82,7 +82,7 @@ class ApplicationStatus(CommandClass):
         """" Status values
         """
         # TODO : Find status values code
-        msg = Msg("ApplicationStatusCmd_RejectedRequest", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+        msg = Msg("ApplicationStatusCmd_RejectedRequest", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
         msg.Append(TRANSMIT_COMPLETE_OK)
         msg.Append(self.nodeId)
         msg.Append(3 if code != 1 else 4)

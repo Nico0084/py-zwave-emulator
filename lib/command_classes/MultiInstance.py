@@ -112,7 +112,7 @@ class MultiInstance(CommandClass):
     def ProcessMsg(self, _data, instance=1, multiInstanceData = []):
         # Version 1  MULTI_INSTANCE
         if _data[0] == MultiInstanceCmd.Get: 
-            msg = Msg("MultiInstanceCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+            msg = Msg("MultiInstanceCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             clss = self._node.GetCommandClass(_data[1])
             if clss is not None :
                 msg.Append(TRANSMIT_COMPLETE_OK)
@@ -128,7 +128,7 @@ class MultiInstance(CommandClass):
             
         # Version 2 MULTI_CHANNEL
         elif _data[0] == MultiInstanceCmd.EndPointGet:
-            msg = Msg( "MultiChannelCmd_EndPoint_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+            msg = Msg( "MultiChannelCmd_EndPoint_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             msg.Append(TRANSMIT_COMPLETE_OK)
             msg.Append(self.nodeId)
             msg.Append(0x04)
@@ -141,7 +141,7 @@ class MultiInstance(CommandClass):
             self.GetDriver.SendMsg(msg, MsgQueue.NoOp)
         elif _data[0] == MultiInstanceCmd.CapabilityGet:
             endPoint = _data[1]
-            msg = Msg( "MultiChannelCmd_Capability_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+            msg = Msg( "MultiChannelCmd_Capability_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             msg.Append(TRANSMIT_COMPLETE_OK)
             msg.Append(self.nodeId)
             mapEndpoint = self._node.getEndpointCmdClasses(endPoint)
@@ -167,7 +167,7 @@ class MultiInstance(CommandClass):
             endPoint = _data[2]
             cmdClss = self._node.GetCommandClass(_data[3])
             if cmdClss is not None:
-                msg = Msg( "MultiChannelCmd_EncapV2_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+                msg = Msg( "MultiChannelCmd_EncapV2_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
                 msgHeader = [TRANSMIT_COMPLETE_OK]
                 msgHeader.append(self.nodeId)
                 instance = self._node.getInstanceFromEndpoint(_data[3], endPoint)

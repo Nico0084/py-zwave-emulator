@@ -62,10 +62,10 @@ ACK_TIMEOUT =	1000		# How long to wait for an ACK
 BYTE_TIMEOUT =	150
 RETRY_TIMEOUT =	40000		# Retry send after 40 seconds
 
-SOF	=											0x01
-ACK	=											0x06
-NAK	=											0x15
-CAN	=											0x18
+SOF	=											0x01   # Start OF Frame
+ACK	=											0x06   # Acknowledgement 
+NAK	=											0x15   # Negative-Acknowledgment
+CAN	=											0x18   # Cancel
 
 NUM_NODE_BITFIELD_BYTES	=			29		# 29 bytes = 232 bits, one for each possible node in the network.
 

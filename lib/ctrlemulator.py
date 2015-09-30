@@ -45,10 +45,13 @@ PORT = "/tmp/ttyS1"
 
 class OZWSerialEmul:
     
-    def __init__(self, port, baud = 19200, timeout = 0,  stop = None, callback = None,  log =None):
+    def __init__(self, port, baud = 19200, timeout = 0,  stop = None, callback = None, setWaitingForAck = None, log =None, cbTimeOut = 0):
         self._stop = stop
         self._callback = callback
+        self._setWaitingForAck = setWaitingForAck
         self._log = log
+        self._cbTimeOut = cbTimeOut
+        self._lockWrite = threading.Lock()  # use to lock write data on serial when waiting for an ACK
         self._log.write(LogLevel.Info, "  Opening emulate controller {0}".format(port))
         self._serial = serial.Serial(port,  baud, timeout = timeout)
         self._readMsg = threading.Thread(None, self.waitData, "th_Handle_Read_Msg", (), {})
@@ -56,6 +59,10 @@ class OZWSerialEmul:
         
     def close(self):
         self._log.write(LogLevel.Info, "Closing emulate controller {0}".format(self._serial.name))
+        try :
+            self._lockWrite.release()
+        except:
+            pass
         self._serial.close()
         
     def formatHex(self,  data):
@@ -71,37 +78,54 @@ class OZWSerialEmul:
                 print "Receive {0} Octets [{1}]".format(len(data),  self.formatHex(buff))
                 return buff
         except  serial.SerialException, e:
-            print "Erreur de lecture :" , e
+            print "Read error :" , e
         return None
         
     def writeHex(self, data):
         s = ''
         for c in data :
             s += chr(c)
+        if data[0] == SOF : 
+            self._lockWrite.acquire()
+            self._setWaitingForAck(True)
         num = self._serial.write(s)
         print "*** writed :{0} Octets --> [{1}]".format(num, self.formatHex(data))
+        try :
+            if data[0] == SOF : self._lockWrite.release()
+        except:
+            pass
         
     def waitData(self):
+        cbTimeOut = time.time();
         while not self._stop.isSet():
             data = self.read()
             if data is not None :
-                print 'Sending to manager : {0}'.format(self.formatHex(data))
+                cbTimeOut = time.time();
+                print 'Pass to driver : {0}'.format(self.formatHex(data))
                 if data[0] == ACK:                                                       # ACK : 0x06
                     print '*** ACK received ****'
                     data.pop(0)
+                    self._setWaitingForAck(False)
                     if self._callback is not None: self._callback([ACK])
                 elif data[0] == NAK:                                                   # NAK : 0x15
                     print '*** NAK Receive ****'
                     data.pop(0)
+                    self._setWaitingForAck(False)
                     if self._callback is not None: self._callback([NAK])
                 elif data[0] == CAN:                                                   # CAN : 0x18
                     print '*** CAN Receive ****'
                     data.pop(0)
+                    self._setWaitingForAck(False)
                     if self._callback is not None: self._callback([CAN])
-                if data and data[0] == SOF:                                        # SOF : 0x01
+                if data and data[0] == SOF:                                       # SOF : 0x01
+                    self._lockWrite.acquire()
                     if self._callback is not None: self._callback(data)
+                    self._lockWrite.release()
             else:
-                time.sleep(0.1)
+                if self._cbTimeOut and time.time() >= cbTimeOut + self._cbTimeOut:
+                    cbTimeOut = time.time();
+                    if self._callback is not None: self._callback([])
+                time.sleep(0.01)
         self.close()
         print "Terminate, serial open ? : ",  self._serial.isOpen()
     

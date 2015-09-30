@@ -58,7 +58,7 @@ class ManufacturerSpecific(CommandClass):
         return ManufacturerSpecificCmd().getFullName(_id)
         
     def ProcessMsg(self, _data, instance=1):
-        msg = Msg( "ManufacturerSpecificCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER, False)
+        msg = Msg( "ManufacturerSpecificCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
         if _data[0] == ManufacturerSpecificCmd.Get:
             msg.Append(TRANSMIT_COMPLETE_OK)
             msg.Append(self.nodeId)
