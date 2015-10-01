@@ -341,6 +341,18 @@ class Driver:
         if self._currentCallbackId >= 0xff: self._currentCallbackId = 0x0a
         return self._currentCallbackId
 
+    def RegisterNode(self, _nodeId, newNode):
+        """Queue a node to be interrogated for its setup details"""
+        #Delete any existing node and replace it with a new one
+        if _nodeId in self.m_nodes:
+            # Remove the original node
+            del (self.m_nodes[_nodeId])
+        # Add the new node
+        self.m_nodes[_nodeId] = self.GetNode(_nodeId)
+        if newNode == True : self.m_nodes[_nodeId].SetAddingNode()
+        self._log.write(LogLevel.Info, self,  "{0}, Registered Node {1}. New Node: {2} ({3})".format(self._manager.matchHomeID(self.homeId),_nodeId, 
+                            self.m_nodes[_nodeId].IsAddingNode, newNode))
+
     def SendMsg(self, _msg,  _queue, firstNext = False, timing = 0):
         # Queue a message to be sent to the Z-Wave PC Interface
         item = MsgQueueItem(_msg,  _queue, firstNext, time.time()+timing)
@@ -358,18 +370,6 @@ class Driver:
         self._log.write(LogLevel.Detail, node, "Queuing ({0}) {1}".format(MsgQueue().getName(_queue), _msg.GetAsString()))
         self.msgQueues[_queue].append(item)
 
-    def RegisterNode(self, _nodeId, newNode):
-        """Queue a node to be interrogated for its setup details"""
-        #Delete any existing node and replace it with a new one
-        if _nodeId in self.m_nodes:
-            # Remove the original node
-            del (self.m_nodes[_nodeId])
-        # Add the new node
-        self.m_nodes[_nodeId] = self.GetNode(_nodeId)
-        if newNode == True : self.m_nodes[_nodeId].SetAddingNode()
-        self._log.write(LogLevel.Info, self,  "{0}, Registered Node {1}. New Node: {2} ({3})".format(self._manager.matchHomeID(self.homeId),_nodeId, 
-                            self.m_nodes[_nodeId].IsAddingNode, newNode))
-
     def HandleMsg(self, buffer):
         """Handle data read from the serial port"""
         print 'Receive from controller : {0}'.format(self.controller.formatHex(buffer))
@@ -377,13 +377,13 @@ class Driver:
             # Nothing to read, TimeOut
             if self.getWaitingForAck() : 
                 if self.m_currentMsg is not None:
-                    self._log.write(LogLevel.Detail, "TimeOut on waiting for ACK. Try to resend last messgae...")
+                    self._log.write(LogLevel.Detail, "TimeOut on waiting for ACK. Try to resend last message...")
                     self.m_currentMsg.msg.m_sendAttempts += 1
                     if self.m_currentMsg.msg.m_sendAttempts < MAX_TRIES :
                         self.driverData.m_dropped += 1
-                        self.sendMsg(self.m_currentMsg.msg, self.m_currentMsg.queue, True, 0)
+                        self.SendMsg(self.m_currentMsg.msg, self.m_currentMsg.queue, True, 0)
                     else :
-                        self._log.write(LogLevel.StreamDetail, node, "Max tries {0} reached, abord resend : ".format(MAX_TRIES,  self.m_currentMsg.msg.GetAsString()))
+                        self._log.write(LogLevel.StreamDetail, self.m_currentMsg.msg.GetTargetNodeId, "Max tries {0} reached, abord resend : ".format(MAX_TRIES,  self.m_currentMsg.msg.GetAsString()))
                         self._log.write(LogLevel.Detail, "Connection client presumed lost on {0}.".format(self.serialport))
                         self._clientConnected = False
                     self.RemoveCurrentMsg()
@@ -456,7 +456,7 @@ class Driver:
             if self.m_currentMsg is not None:
                 self.m_currentMsg.msg.m_sendAttempts += 1
                 if self.m_currentMsg.msg.m_sendAttempts < MAX_TRIES : 
-                    self.sendMsg(self.m_currentMsg.msg, self.m_currentMsg.queue, True, 0)
+                    self.SendMsg(self.m_currentMsg.msg, self.m_currentMsg.queue, True, 0)
                 else :
                     self._log.write(LogLevel.StreamDetail, node, "Max tries {0} reached, abord resend : ".format(MAX_TRIES,  self.m_currentMsg.msg.GetAsString()))
                     self.RemoveCurrentMsg()                    
@@ -483,7 +483,6 @@ class Driver:
             self.controller.writeHex([NAK])
         return True
 
-        
     def ProcessMsg(self, _data):
         """Process data received from the Z-Wave PC interface"""
         print "******************************** ProcessMsg ********************************"
@@ -582,7 +581,7 @@ class Driver:
                     m_expectedNodeId = 0
             elif function ==  FUNC_ID_ZW_IS_FAILED_NODE_ID:
                 self._log.write(LogLevel.Detail, "" )
-                HandleIsFailedNodeResponse( _data )
+                self.HandleIsFailedNodeResponse( _data )
             elif function ==  FUNC_ID_ZW_REPLACE_FAILED_NODE:
                 self._log.write(LogLevel.Detail, "" )
                 if not HandleReplaceFailedNodeResponse( _data ):
@@ -729,16 +728,17 @@ class Driver:
                         if msgQ is not None : break
                 if msgQ is not None :
                     if self._clientConnected :
-                            self._log.write(LogLevel.Detail, self, "Queue {0}, Send{1} message to Node {2} : {3}".format(MsgQueue().getName(msgQ.queue), priority, msgQ.nodeId,  msgQ.msg.GetAsString()))
-                            self.controller.writeHex(msgQ.msg.m_buffer)
-                            self.m_currentMsg = MsgQueueItem(copy.copy(msgQ.msg), msgQ.queue, msgQ.firstNext, 0)                                
-#                            self.setWaitingForAck(True)
+                        attempt = "" if msgQ.msg.m_sendAttempts == 0 else " (Attempt {0})".format(msgQ.msg.m_sendAttempts)
+                        self._log.write(LogLevel.Detail, self, "Queue {0}, Send{1}{2} message to Node {3} : {4}".format(MsgQueue().getName(msgQ.queue),
+                                                                        priority,
+                                                                        attempt, 
+                                                                        msgQ.nodeId,  msgQ.msg.GetAsString()))
+                        self.controller.writeHex(msgQ.msg.m_buffer)
+                        self.m_currentMsg = MsgQueueItem(copy.copy(msgQ.msg), msgQ.queue, msgQ.firstNext, 0)                                
                     else : 
                         self._log.write(LogLevel.Detail, self, "No Client connected send aborted on {0}".format(self.serialport))
                     self.msgQueues[msgQ.queue].remove(msgQ)
                     cpt = 0
-#            else :
-#                self._log.write(LogLevel.Detail, self, "Wait for ACK can't send on {0}".format(self.serialport))
             cpt += 1
             self._stop.wait(.01)
             if cpt == 500 : 
@@ -979,11 +979,7 @@ class Driver:
 
     def HandleNodeNeighborUpdateResponse(self, _data):
         node = self.GetNode(_data[2])
-#        msg = Msg( "Z-Wave stack for FUNC_ID_ZW_REQUEST_NODE_NEIGHBOR_UPDATE_OPTIONS", _data[2],  RESPONSE, FUNC_ID_ZW_REQUEST_NODE_NEIGHBOR_UPDATE_OPTIONS,)
         if node is not None :
-#            msg.Append(self.m_expectedCallbackId)
-#            msg.Append(TRANSMIT_OPTION_ACK)
-#            self.SendMsg(msg, MsgQueue.NoOp)  # Ack for request
             msg = node.getMsgNodeNeighborUpdate(_data[-2])
             msg.SetExpectedCallBack(_data[-2])
             self.SendMsg(msg, MsgQueue.Command, True)
@@ -1037,6 +1033,19 @@ class Driver:
         # wait for inclusion in a thread with stop function and timeout ?
         # memorise callbackID
         
+    def HandleIsFailedNodeResponse(self, _data):
+        node = self.GetNode(_data[2])
+        msg = Msg( "Z-Wave stack for FUNC_ID_ZW_IS_FAILED_NODE_ID ", _data[2],  RESPONSE, FUNC_ID_ZW_IS_FAILED_NODE_ID)
+        if node is not None :
+            state = FAILED_NODE_NOT_FOUND if node.IsFailed else FAILED_NODE_OK
+            msg.Append(state)
+            msg.Append(_data[2])
+            self.SendMsg(msg, MsgQueue.Command, True)
+        else : # Handle A response fail , Seems no possible response in zwave protocol , so send node OK
+            msg.Append(FAILED_NODE_OK)
+            msg.Append(_data[2])
+            self.SendMsg(msg, MsgQueue.Command, True)
+        
     def getFirstMsg(self):
         for queue in self.msgQueues :
             for msgQ in self.msgQueues[queue] :
@@ -1051,7 +1060,9 @@ class Driver:
             self._stop.wait(timings[i])
             if not self._stop.isSet() :
                 msg = Msg(msgParams['logText'], msgParams['targetNodeId'], msgParams['msgType'], msgParams['function'])
-                if 'callbackId' in msgParams: msg.Append(msgParams['callbackId'])
+                if 'callbackId' in msgParams:
+                    msg.Append(msgParams['callbackId'])
+                    msg.SetExpectedCallBack(msgParams['callbackId'])
                 msg.Append(listState[i])
                 self.SendMsg(msg, queues[i], firstNext[i], timings[i])
                 i += 1
