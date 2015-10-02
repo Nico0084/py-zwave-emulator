@@ -46,12 +46,12 @@
         {% endif %}
     {% endfor %}
     {% if  nodesToInclude|length > 0 %}
-        <h1>Node not include in a network</h1>
+        <h2>Node not include in a network</h2>
             <div class="list-group">
-                <h2 class="list-group-item">
+                <h3 class="list-group-item">
                 Nodes list
                 <span class="badge">{{ nodesToInclude|length  }}</span>
-                </h2>
+                </h3>
                 {% for node in nodesToInclude %} 
                     {% if node.name %}
                         {% set extraTxt = "%s -- "%node.name %}
@@ -67,17 +67,22 @@
     {% endif %}
     {% if listdrivers|length > 0 %}
       {% for driver in listdrivers %}
-        <h1>Network on HomeID {{ manager.matchHomeID(driver.homeId) }} (Serial port : {{ driver.serialport }})
-            <button type="button" id="inclusioncmd_{{ driver.homeId }}" class="btn btn-default">
-              <span id="inclusioncmdic_{{ driver.homeId }}" class='glyphicon glyphicon-cloud-upload' aria-hidden='true' value='start'></span>
+        <h2>Network on HomeID {{ manager.matchHomeID(driver.homeId) }} (Serial port : {{ driver.serialport }}) </h2>
+        <div class="row">
+            <button type="button" id="inclusioncmd_{{ driver.homeId }}" class="btn btn-primary">
+              <span id="inclusioncmdic_{{ driver.homeId }}" class='glyphicon glyphicon-log-in' aria-hidden='true' value='start'></span>
               <span id="inclusioncmdtx_{{ driver.homeId }}"> Start Inclusion Mode</span>
             </button>
-        </h1>
+            <button type="button" id="exclusioncmd_{{ driver.homeId }}" class="btn btn-warning pull-right">
+              <span id="exclusioncmdic_{{ driver.homeId }}" class='glyphicon glyphicon-log-out' aria-hidden='true' value='start'></span>
+              <span id="exclusioncmdtx_{{ driver.homeId }}"> Start Exclusion Mode</span>
+            </button>
+        <div>
             <div class="list-group">
-                <h2 class="list-group-item">
+                <h3 class="list-group-item">
                 Nodes list
                 <span class="badge">{{ listnodes|length }}</span>
-                </h2>
+                </h3>
                 {% for node in listnodes %} 
                     {% if node.homeId ==  driver.homeId %}
                         {% if node.name %}
@@ -88,7 +93,8 @@
                         <a class="list-group-item" href="/virtualnodes/{{ manager.matchHomeID(driver.homeId) }}.{{ node.nodeId }}">
                         <span class='glyphicon glyphicon-chevron-right' aria-hidden='true'></span> 
                         {{ node.nodeId }} -  {{ extraTxt }} {{ node.GetProductName }}
-                        <span class="label label-info status status-label status-alive pull-right">Init</span>
+                        <button id="exclude_{{ node.homeId }}_{{ node.nodeId }}" name="{{ node.nodeId }} -  {{ extraTxt }} {{ node.GetProductName }}" type="button" class="btn btn-xs btn-warning pull-right">Exclusion</button>
+                        <span class="label label-info status status-label status-alive pull-right"> Init</span>
                         </a>
                     {% endif %}
                 {% endfor %}
@@ -127,7 +133,27 @@
         </div>
       </div>
     </div>
-    
+
+    <!-- Modal Exclusion-->
+    <div class="modal fade" id="confirm_exclude_node" tabindex="-1" role="dialog" aria-labelledby="excludenodelInstructions" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            <h4 class="modal-title" id="excludeModalLabel">Node Exclusion</h4>
+          </div>
+          <div class="modal-body">
+            <p>Confirme the exclusion of node from a network (controller)</p>
+            <h4 id="nodetoexclude"></h4>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+            <button id="excludenode" type="button" class="btn btn-primary" data-dismiss="modal">Exclusion</button>
+          </div>
+        </div>
+      </div>
+    </div>    
+
 </div>
 
 
@@ -156,12 +182,13 @@
     });
     $("[id^='include_']").click(function(){
         var nodeId = this.id.split("_")[1];
-        $('#nodetoinclude').attr('value', nodeId).text(this.name);
+        $('#nodetoinclude').attr('nodeId', nodeId).text(this.name);
         $('#confirm_include_node').modal();
     });
+    
     $('#includenode').click(function() {
         var homeId = $('#listCtrl').val();
-        var nodeId = $('#nodetoinclude').attr('value');
+        var nodeId = $('#nodetoinclude').attr('nodeId');
         if (homeId != "") {
             $.getJSON('/virtualnodes/includenode/' + homeId +'/' + nodeId, {}, function(data, result) {
                 if (data.result == 'error') {
@@ -182,11 +209,23 @@
             });
         };
     });
+    
     $("[id^='inclusioncmd_']").click(function(){
         var homeId = this.id.split("_")[1];
         var cmd = $("#inclusioncmdic_"+homeId).attr('value');
         if (homeId != "") {
             $.getJSON('/virtualnodes/inclusion/' + homeId +'/' + cmd, {'mode':'ADD_NODE_ANY'}, function(data, result) {
+                if (data.status) {
+                    $("#inclusioncmdic_"+homeId).removeClass('glyphicon-log-in').addClass('glyphicon-record');
+                    $("#inclusioncmdic_"+homeId).attr('value','stop');
+                    $("#inclusioncmd_"+homeId).removeClass('btn-primary').addClass('btn-info');
+                    $("#inclusioncmdtx_"+homeId).text(' Stop inclusion mode');
+                } else {
+                    $("#inclusioncmdic_"+homeId).removeClass('glyphicon-record').addClass('glyphicon-log-in');
+                    $("#inclusioncmdic_"+homeId).attr('value','start');
+                    $("#inclusioncmd_"+homeId).removeClass('btn-info').addClass('btn-primary');
+                    $("#inclusioncmdtx_"+homeId).text(' Start inclusion mode');
+                };
                 if (data.result == 'error') {
                     new PNotify({
                             type: 'error',
@@ -195,20 +234,75 @@
                             delay: 6000
                     });
                 } else {
-                    if (cmd == 'start') {
-                        $("#inclusioncmdic_"+homeId).removeClass('glyphicon-cloud-upload').addClass('glyphicon-record');
-                        $("#inclusioncmdic_"+homeId).attr('value','stop');
-                        $("#inclusioncmd_"+homeId).removeClass('btn-default').addClass('btn-info');
-                        $("#inclusioncmdtx_"+homeId).text(' Stop inclusion mode');
-                    } else {
-                        $("#inclusioncmdic_"+homeId).removeClass('glyphicon-record').addClass('glyphicon-cloud-upload');
-                        $("#inclusioncmdic_"+homeId).attr('value','start');
-                        $("#inclusioncmd_"+homeId).removeClass('btn-info').addClass('btn-default');
-                        $("#inclusioncmdtx_"+homeId).text(' Start inclusion mode');
-                    };
                     new PNotify({
                         type: 'success',
                         title: 'Controller inclusion mode',
+                        text: data.msg,
+                        delay: 4000
+                    });
+                };
+            });
+        }; 
+    });
+    
+    $("[id^='exclude_']").click(function(){
+        var refId = this.id.split("_");
+        $('#nodetoexclude').attr('homeId',refId[1]).attr('nodeId',refId[2]).text(this.name);
+        $('#confirm_exclude_node').modal();
+        return false;
+    });
+
+    $('#excludenode').click(function() {
+        var homeId = $('#nodetoexclude').attr('homeId');
+        var nodeId = $('#nodetoexclude').attr('nodeId');
+        if (homeId != "") {
+            $.getJSON('/virtualnodes/excludenode/' + homeId +'/' + nodeId, {}, function(data, result) {
+                if (data.result == 'error') {
+                    new PNotify({
+                            type: 'error',
+                            title: 'Invalid input',
+                            text: data.msg,
+                            delay: 6000
+                    });
+                } else {
+                    new PNotify({
+                        type: 'success',
+                        title: 'Node is exclude',
+                        text: data.msg,
+                        delay: 4000
+                    });
+                };
+            });
+        };
+    });
+
+    $("[id^='exclusioncmd_']").click(function(){
+        var homeId = this.id.split("_")[1];
+        var cmd = $("#exclusioncmdic_"+homeId).attr('value');
+        if (homeId != "") {
+            $.getJSON('/virtualnodes/exclusion/' + homeId +'/' + cmd, {'mode':'REMOVE_NODE_ANY'}, function(data, result) {
+                if (data.status) {
+                    $("#exlusioncmdic_"+homeId).removeClass('glyphicon-log-out').addClass('glyphicon-record');
+                    $("#exclusioncmdic_"+homeId).attr('value','stop');
+                    $("#exclusioncmd_"+homeId).removeClass('btn-warning').addClass('btn-danger');
+                    $("#exclusioncmdtx_"+homeId).text(' Stop exclusion mode');
+                } else {
+                    $("#exclusioncmdic_"+homeId).removeClass('glyphicon-record').addClass('glyphicon-log-out');
+                    $("#exclusioncmdic_"+homeId).attr('value','start');
+                    $("#exclusioncmd_"+homeId).removeClass('btn-danger').addClass('btn-warning');
+                    $("#exclusioncmdtx_"+homeId).text(' Start exclusion mode');
+                };
+                if (data.result == 'error') {
+                    new PNotify({
+                            type: 'error',
+                            title: 'Invalid input',
+                            text: data.msg,
+                            delay: 6000
+                    });
+                } else {
+                    new PNotify({
+                        type: 'success',
+                        title: 'Controller exclusion mode',
                         text: data.msg,
                         delay: 4000
                     });

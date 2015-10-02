@@ -385,6 +385,11 @@ class Manager(object):
         ctrl = self.GetDriver(homeId)
         return ctrl.includeNode(node)
 
+    def excludeNode(self, node):
+        """Exclude a node from zwave network"""
+        ctrl = self.GetDriver(node.homeId)
+        return ctrl.excludeNode(node)
+
     def startDriver(self, homeId):
         if self.checkVirtualCom(homeId) :
             serialport = self.zwNetworks[homeId]['configData']['virtualcom']['ports']['emulator']

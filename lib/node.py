@@ -159,7 +159,7 @@ class Node:
 
     IsListeningDevice = property(lambda self: self.listening)
     IsAddingNode = property(lambda self: self.m_addingNode)
-    IsInclude = property(lambda self: True if self.homeId != 0 and self.nodeId != 0 else False)
+    IsInclude = property(lambda self: True if self.homeId != 0 else False)
     IsFailed = property(lambda self: self.emulData['failed'])
     
     def IsController(self):

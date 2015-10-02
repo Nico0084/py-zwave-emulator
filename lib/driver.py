@@ -191,7 +191,9 @@ class Driver:
     GetTransmitOptions = property(lambda self: self.m_transmitOptions)
     IsInIncludeState = property(lambda self: True if FUNC_ID_ZW_ADD_NODE_TO_NETWORK in self._currentCtrlCommands and \
         (self._currentCtrlCommands[FUNC_ID_ZW_ADD_NODE_TO_NETWORK].crtlState in [ControllerState.Waiting, ControllerState.InProgress]) else False)
-    
+    IsInExcludeState = property(lambda self: True if FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK in self._currentCtrlCommands and \
+        (self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK].crtlState in [ControllerState.Waiting, ControllerState.InProgress]) else False)
+
     def GetClassInformation(self):
         return {'name': 'COMMAND_CLASS_NO_OPERATION',  'id': 0x00}
     
@@ -292,6 +294,7 @@ class Driver:
             for d in msgTemp: msg.Append(d) # Add node CommandClasses
             self._currentCtrlCommands[FUNC_ID_ZW_ADD_NODE_TO_NETWORK].setCtrlState(ControllerState.InProgress, ADD_NODE_STATUS_ADDING_SLAVE)
             self._currentCtrlCommands[FUNC_ID_ZW_ADD_NODE_TO_NETWORK].nodeId = node.nodeId
+            msg.SetExpectedCallBack(self._currentCtrlCommands[FUNC_ID_ZW_ADD_NODE_TO_NETWORK].callbackId)
             self.SendMsg(msg, MsgQueue.Command)
             threading.Thread(None, self.waitForStepCmd, "th_handleWaitForStepCmd_ctrl_{0}.".format(self.homeId), (),
                     {'callback': self.terminateIncludeNode, 
@@ -312,21 +315,98 @@ class Driver:
                 msg.Append(TRANSMIT_COMPLETE_OK)
                 self._currentCtrlCommands[FUNC_ID_ZW_ADD_NODE_TO_NETWORK].setCtrlState(ControllerState.InProgress, ADD_NODE_STATUS_PROTOCOL_DONE)
                 self._currentCtrlCommands[FUNC_ID_ZW_ADD_NODE_TO_NETWORK].nodeId = 0
+                msg.SetExpectedCallBack(self._currentCtrlCommands[FUNC_ID_ZW_ADD_NODE_TO_NETWORK].callbackId)
                 self.SendMsg(msg, MsgQueue.Command)
             else :
-                self._log.write(LogLevel.Warning, node, "Controller {0} have no node in inclusion process, state: {1}".format(self.homeId, self._currentCtrlCommands[FUNC_ID_ZW_ADD_NODE_TO_NETWORK].ctrlStateNum))
+                self._log.write(LogLevel.Warning, self, "Controller {0} have no node in inclusion process, state: {1}".format(self.homeId, self._currentCtrlCommands[FUNC_ID_ZW_ADD_NODE_TO_NETWORK].ctrlStateNum))
         else :
-            self._log.write(LogLevel.Warning, node, "Controller {0} ins't in include state.".format(self.homeId))
+            self._log.write(LogLevel.Warning, self, "Controller {0} ins't in include state.".format(self.homeId))
 
     def setInInclusion(self): #TODO: add option to start function by type ADD_NODE_CONTROLLER, ADD_NODE_SLAVE, ADD_NODE_EXISTING
         """Put driver in inclusion mode"""
         if not self.IsInIncludeState :
-            self.HandleAddNodeToNetworkRequest([REQUEST, FUNC_ID_ZW_ADD_NODE_TO_NETWORK, ADD_NODE_ANY | OPTION_HIGH_POWER, self.getNextCallbackId()]) 
-        
+            if not self.IsInExcludeState :
+                self.HandleAddNodeToNetworkRequest([REQUEST, FUNC_ID_ZW_ADD_NODE_TO_NETWORK, ADD_NODE_ANY | OPTION_HIGH_POWER, self.getNextCallbackId()])
+                self._log.write(LogLevel.Info, self, "{0} is inclusion mode".format(self._manager.matchHomeID(self.homeId))) 
+                return {"error": u""}
+            else : 
+                self._log.write(LogLevel.Warning, self, "{0} is in exclusion mode, unauthorized inclusion mode".format(self._manager.matchHomeID(self.homeId))) 
+                return {"error": u"{0} is in exclusion mode, unauthorized inclusion mode".format(self._manager.matchHomeID(self.homeId))}
+        else : 
+            self._log.write(LogLevel.Warning, self, "{0} is already in inclusion mode".format(self._manager.matchHomeID(self.homeId))) 
+            return {"error": u"{0} is already in inclusion mode".format(self._manager.matchHomeID(self.homeId))}
+
     def setOutInclusion(self): #TODO: add option to terminat function by type ADD_NODE_STOP_FAILED
         """Exit driver of inclusion mode"""
         if self.IsInIncludeState :
             self.HandleAddNodeToNetworkRequest([REQUEST, FUNC_ID_ZW_ADD_NODE_TO_NETWORK, ADD_NODE_STOP | OPTION_HIGH_POWER, self.getNextCallbackId()]) 
+            self._log.write(LogLevel.Info, self, "{0} has quit inclusion mode".format(self._manager.matchHomeID(self.homeId))) 
+            return {"error": u""}
+        else : 
+            self._log.write(LogLevel.Warning, self, "{0} is not in inclusion mode, can't stop it !".format(self._manager.matchHomeID(self.homeId))) 
+            return {"error": u"{0} is not in inclusion mode, can't stop it !".format(self._manager.matchHomeID(self.homeId))}
+
+    def excludeNode(self, node):
+        """Exclude a node from zwave network, handle process message"""
+        if self.IsInExcludeState :
+            msg = Msg( "Request FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK", self.nodeId,  REQUEST, FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK)
+            msg.Append(self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK].callbackId) # TODO: Check if necessary in case of internal inclusion ?
+            msg.Append(REMOVE_NODE_STATUS_REMOVING_SLAVE)
+            msg.Append(node.nodeId)
+            self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK].setCtrlState(ControllerState.InProgress, REMOVE_NODE_STATUS_REMOVING_SLAVE)
+            self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK].nodeId = node.nodeId
+            self.UnRegisterNode(node)
+            msg.SetExpectedCallBack(self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK].callbackId)
+            self.SendMsg(msg, MsgQueue.Command)
+            threading.Thread(None, self.waitForStepCmd, "th_handleWaitForStepCmd_ctrl_{0}.".format(self.homeId), (),
+                    {'callback': self.terminateExcludeNode, 
+                      'timing' : 0.5
+                    }).start()
+            return True
+        else :
+            self._log.write(LogLevel.Warning, self, "Controller {0} ins't in exclude state.".format(self.homeId))
+            return False
+
+    def terminateExcludeNode(self):
+        if self.IsInExcludeState :
+            if self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK].ctrlStateNum == REMOVE_NODE_STATUS_REMOVING_SLAVE :
+                msg = Msg( "Request FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK - REMOVE_NODE_STATUS_DONE", self.nodeId,  REQUEST, FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK)
+                msg.Append(self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK].callbackId)
+                msg.Append(REMOVE_NODE_STATUS_DONE)
+                msg.Append(self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK].nodeId) 
+                msg.Append(TRANSMIT_COMPLETE_OK)
+                self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK].setCtrlState(ControllerState.InProgress, REMOVE_NODE_STATUS_REMOVING_SLAVE)
+                self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK].nodeId = 0xff
+                msg.SetExpectedCallBack(self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK].callbackId)
+                self.SendMsg(msg, MsgQueue.Command)
+            else :
+                self._log.write(LogLevel.Warning, self, "Controller {0} have no node in exclusion process, state: {1}".format(self.homeId, self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK].ctrlStateNum))
+        else :
+            self._log.write(LogLevel.Warning, self, "Controller {0} ins't in exclude state.".format(self.homeId))
+
+    def setInExclusion(self): #TODO: add option to start function by type REMOVE_NODE_CONTROLLER, REMOVE_NODE_SLAVE
+        """Put driver in inclusion mode"""
+        if not self.IsInExcludeState :
+            if not self.IsInIncludeState :
+                self.HandleRemoveNodeFromNetworkRequest([REQUEST, FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK, REMOVE_NODE_ANY | OPTION_HIGH_POWER, self.getNextCallbackId()]) 
+                self._log.write(LogLevel.Info, self, "{0} is exclusion mode".format(self._manager.matchHomeID(self.homeId))) 
+                return {"error": u""}
+            else : 
+                self._log.write(LogLevel.Warning, self, "{0} is in inclusion mode, unauthorized exclusion mode".format(self._manager.matchHomeID(self.homeId))) 
+                return {"error": u"{0} is in inclusion mode, unauthorized exclusion mode".format(self._manager.matchHomeID(self.homeId))}
+        else : 
+            self._log.write(LogLevel.Warning, self, "{0} is already in exclusion mode".format(self._manager.matchHomeID(self.homeId))) 
+            return {"error": u"{0} is already in exclusion mode".format(self._manager.matchHomeID(self.homeId))}
+        
+    def setOutExclusion(self): #TODO: add option to terminat function by type REMOVE_NODE_STATUS_FAILED
+        """Exit driver of inclusion mode"""
+        if self.IsInExcludeState :
+            self.HandleRemoveNodeFromNetworkRequest([REQUEST, FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK, REMOVE_NODE_STOP | OPTION_HIGH_POWER, self.getNextCallbackId()]) 
+            self._log.write(LogLevel.Info, self, "{0} has quit exclusion mode".format(self._manager.matchHomeID(self.homeId))) 
+            return {"error": u""}
+        else : 
+            self._log.write(LogLevel.Warning, self, "{0} is not in exclusion mode, can't stop it !".format(self._manager.matchHomeID(self.homeId))) 
+            return {"error":  u"{0} is not in exclusion mode, can't stop it !".format(self._manager.matchHomeID(self.homeId))}
 
     def setWaitingForAck(self, state):
         self._waitingForAck = state
@@ -342,7 +422,7 @@ class Driver:
         return self._currentCallbackId
 
     def RegisterNode(self, _nodeId, newNode):
-        """Queue a node to be interrogated for its setup details"""
+        """Register and queue a node to be interrogated for its setup details"""
         #Delete any existing node and replace it with a new one
         if _nodeId in self.m_nodes:
             # Remove the original node
@@ -352,6 +432,21 @@ class Driver:
         if newNode == True : self.m_nodes[_nodeId].SetAddingNode()
         self._log.write(LogLevel.Info, self,  "{0}, Registered Node {1}. New Node: {2} ({3})".format(self._manager.matchHomeID(self.homeId),_nodeId, 
                             self.m_nodes[_nodeId].IsAddingNode, newNode))
+
+    def UnRegisterNode(self, node):
+        """Exlcude a node From the network"""
+        #Delete any existing node and replace it with a new one
+        if node in self.m_nodes:
+            # Remove the original node
+            del (self.m_nodes[node.nodeId])
+        # set exclude the node
+        nodeId = node.nodeId
+        node.homeId = 0
+        node.nodeId = self._manager.getFirstFreeNodeIdBeforeInclude()
+        node.ClearAddingNode()
+        node.Reset()
+
+        self._log.write(LogLevel.Info, self,  "{0}, Unregistered Node {1}".format(self._manager.matchHomeID(self.homeId), nodeId))
 
     def SendMsg(self, _msg,  _queue, firstNext = False, timing = 0):
         # Queue a message to be sent to the Z-Wave PC Interface
@@ -572,6 +667,9 @@ class Driver:
             elif function ==  FUNC_ID_ZW_ADD_NODE_TO_NETWORK:
                 self._log.write(LogLevel.Detail, "" )
                 self.HandleAddNodeToNetworkRequest(_data)
+            elif function ==  FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK:
+                self._log.write(LogLevel.Detail, "" )
+                self.HandleRemoveNodeFromNetworkRequest( _data )
             elif function ==  FUNC_ID_ZW_REMOVE_FAILED_NODE_ID:
                 self._log.write(LogLevel.Detail, "" )
                 if not HandleRemoveFailedNodeResponse( _data ):
@@ -656,9 +754,6 @@ class Driver:
                 elif function ==  FUNC_ID_ZW_APPLICATION_UPDATE:
                     self._log.write(LogLevel.Detail, "" )
                     handleCallback = not HandleApplicationUpdateRequest( _data )
-                elif function ==  FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK:
-                    self._log.write(LogLevel.Detail, "" )
-                    HandleRemoveNodeFromNetworkRequest( _data )
                 elif function ==  FUNC_ID_ZW_CREATE_NEW_PRIMARY:
                     self._log.write(LogLevel.Detail, "" )
                     HandleCreateNewPrimaryRequest( _data )
@@ -1024,10 +1119,46 @@ class Driver:
             self._currentCtrlCommands[FUNC_ID_ZW_ADD_NODE_TO_NETWORK].highPower = _data[2] & OPTION_HIGH_POWER
             self._currentCtrlCommands[FUNC_ID_ZW_ADD_NODE_TO_NETWORK].options = _data[2] & OPTION_NWI
             self._currentCtrlCommands[FUNC_ID_ZW_ADD_NODE_TO_NETWORK].setCtrlState(ControllerState.Waiting, ADD_NODE_STATUS_LEARN_READY)
-            msg.Append(_data[3]) # Add callbackId
+            msg.Append(_data[-2]) # Add callbackId
             msg.Append(ADD_NODE_STATUS_LEARN_READY)
             msg.Append(TRANSMIT_COMPLETE_OK)  #0x00
             msg.Append(0x00)  #don't know why
+        msg.SetExpectedCallBack(_data[-2])
+        self.SendMsg(msg, MsgQueue.NoOp)
+        # set driver in include mode
+        # wait for inclusion in a thread with stop function and timeout ?
+        # memorise callbackID
+    
+    def HandleRemoveNodeFromNetworkRequest(self, _data):
+        """Start process to exclude a node"""
+        #REMOVE_NODE_ANY				= 0x01
+        #REMOVE_NODE_CONTROLLER		= 0x02
+        #REMOVE_NODE_SLAVE		          = 0x03
+        #REMOVE_NODE_STOP			     = 0x05
+        RemoveType = _data[2] & 0x07  
+        msg = Msg( "Z-Wave stack for FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK", 0xff,  REQUEST, FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK)
+        if RemoveType == REMOVE_NODE_STOP :
+            if FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK in self._currentCtrlCommands :
+                if _data[-2] != self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK].callbackId:
+                    # Controller receive a new command (cancel) from client, callbackId has changed
+                    self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK].callbackId = _data[-2]
+                msg.Append(self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK].callbackId)
+                msg.Append(REMOVE_NODE_STATUS_DONE)
+                msg.Append(0x00) # TODO: Must check if a node has been removing and insert it in case
+                msg.Append(TRANSMIT_COMPLETE_OK)  #0x00
+                del self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK]
+            else :
+                self._log.write(LogLevel.Warning, self, "Receive {ADD_NODE_STOP".format(getFuncName(msgParams['function']), GetDataAsHex([msgParams['function']])))
+        else : 
+            #OPTION_HIGH_POWER			=	0x80    # High power controller for inclusion/exclusion
+            self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK] = ControllerCommandItem(FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK, _data[-2])
+            self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK].highPower = _data[2] & OPTION_HIGH_POWER
+            self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK].setCtrlState(ControllerState.Waiting, ADD_NODE_STATUS_LEARN_READY)
+            msg.Append(_data[-2]) # Add callbackId
+            msg.Append(REMOVE_NODE_STATUS_LEARN_READY)
+            msg.Append(TRANSMIT_COMPLETE_OK)  #0x00
+            msg.Append(0x00)  #don't know why
+        msg.SetExpectedCallBack(_data[-2])
         self.SendMsg(msg, MsgQueue.NoOp)
         # set driver in include mode
         # wait for inclusion in a thread with stop function and timeout ?

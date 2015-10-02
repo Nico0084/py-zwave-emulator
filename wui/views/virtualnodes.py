@@ -301,7 +301,8 @@ def virtualnode_create_node_copy(node_ref):
 @app.route('/virtualnodes/includenode/<homeId>/<nodeId>')
 def virtualnode_include_node(homeId, nodeId):
     manager =  Manager()
-    node = manager.getNode(0, int(nodeId))
+    nodeId = int(nodeId)
+    node = manager.getNode(0, nodeId)
     if node :
         if manager.includeNewNode(int(homeId), node):
             result = 'success'
@@ -318,24 +319,82 @@ def virtualnode_include_node(homeId, nodeId):
 def virtualnode_inclusion_node(homeId, cmd):
     manager =  Manager()
     mode = request.args.get('mode', 0, type=str)
-    driver = manager.GetDriver(int(homeId))
+    homeId = int(homeId)
+    driver = manager.GetDriver(homeId)
     if driver:
         result = 'success'
         if cmd =="start":
-            driver.setInInclusion()
-            msg = u"Command start inclusion mode sended to controller {0}.".format(manager.matchHomeID(homeId))
+            retval = driver.setInInclusion()
+            if retval['error'] == "":
+                msg = u"Command start inclusion mode sended to controller {0}.".format(manager.matchHomeID(homeId))
+            else :
+                result = 'error'
+                msg = retval['error'] 
         elif cmd == "stop":
-            driver.setOutInclusion()
-            msg = u"Command stop inclusion mode sended to controller {0}.".format(manager.matchHomeID(homeId))
+            retval = driver.setOutInclusion()
+            if retval['error'] == "":
+                msg = u"Command stop inclusion mode sended to controller {0}.".format(manager.matchHomeID(homeId))
+            else :
+                result = 'error'
+                msg = retval['error'] 
         else: 
             msg = u"Inclusion command doesn't exist : {0}.".format(cmd)
             result = 'error'
+        status = driver.IsInIncludeState
     else :
         msg = u"controller doesn't exist : {0}.".format(manager.matchHomeID(homeId))
         result = 'error'
-    return jsonify(result=result,  msg=msg)
+        status = False
+    return jsonify(result=result, msg=msg, status = status)
 
+@app.route('/virtualnodes/excludenode/<homeId>/<nodeId>')
+def virtualnode_exclude_node(homeId, nodeId):
+    manager =  Manager()
+    nodeId = int(nodeId)
+    node = manager.getNode(int(homeId), nodeId)
+    if node :
+        if manager.excludeNode(node):
+            result = 'success'
+            msg = u"Node exclude from {0}, reload virtual nodes list.".format(nodeId)
+        else :
+            msg = u"error on exclusion {0}. Check if Controller is in exclusion".format(nodeId)
+            result = 'error'
+    else :
+        msg = u"error on exclusion node {0} node found.".format(nodeId)
+        result = 'error'
+    return jsonify(result=result, msg=msg)
 
+@app.route('/virtualnodes/exclusion/<homeId>/<cmd>')
+def virtualnode_exclusion_node(homeId, cmd):
+    manager =  Manager()
+    mode = request.args.get('mode', 0, type=str)
+    homeId = int(homeId)
+    driver = manager.GetDriver(homeId)
+    if driver:
+        result = 'success'
+        if cmd =="start":
+            retval = driver.setInExclusion()
+            if retval['error'] == "":
+                msg = u"Command start exclusion mode sended to controller {0}.".format(manager.matchHomeID(homeId))
+            else :
+                result = 'error'
+                msg = retval['error'] 
+        elif cmd == "stop":
+            retval = driver.setOutExclusion()
+            if retval['error'] == "":
+                msg = u"Command stop exclusion mode sended to controller {0}.".format(manager.matchHomeID(homeId))
+            else :
+                result = 'error'
+                msg = retval['error'] 
+        else: 
+            msg = u"Exclusion command doesn't exist : {0}.".format(cmd)
+            result = 'error'
+        status = driver.IsInExcludeState
+    else :
+        msg = u"controller doesn't exist : {0}.".format(manager.matchHomeID(homeId))
+        result = 'error'
+        status = False
+    return jsonify(result=result,  msg=msg, status = status)
 # jinja 2 filters
 
 def renderCmdClssGeneric(clss):
