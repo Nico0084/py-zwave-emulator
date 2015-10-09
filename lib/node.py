@@ -228,6 +228,11 @@ class Node:
     def setXmlData(self, data):
         self._xmlData = data
 
+    def setFailed(self, status):
+        if status == "failed" : self.emulData['failed'] = True
+        elif status == "alive" : self.emulData['failed'] = False
+        self._log.write(LogLevel.Info, self, "Now marked as {0}".format('failed' if self.emulData['failed'] else 'alive'))
+        
     def SetManufacturerName(self, name):
         self.manufacturer['name'] = name
     

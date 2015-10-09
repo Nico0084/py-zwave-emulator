@@ -30,8 +30,8 @@
                 <span class="status">{{ nodestatus[0] }}</span> <span class="caret"></span>
               </button>
               <ul class="dropdown-menu" role="menu">
-                <li><a id="Working" href="#">Marquer en vie</a></li>
-                <li><a id="Failed" href="#">Marquer mort</a></li>
+                <li><a id="alive" href="#">Mark as alive</a></li>
+                <li><a id="failed" href="#">Mark as failed</a></li>
               </ul>
             </div>
 
@@ -58,3 +58,32 @@
     </nav>
 
 </div>
+
+<script type="text/javascript">
+    $( document ).ready(function() {
+        $('#alive, #failed').click(function() {
+            console.log(this.id);
+            $.getJSON('/virtualnodes/{{ node_ref }}/state/' + this.id, {}, function(data, result) {
+                if (data.result == 'error') {
+                    new PNotify({
+                            type: 'error',
+                            title: 'Invalid input',
+                            text: data.error,
+                            delay: 6000
+                    });
+                } else {
+                    var oldState = (data.state=='failed') ? 'alive' : 'failed'
+                    $('#node-status button').removeClass('status-' + oldState).addClass('status-'+ data.state);
+                    $('#node-status .status').text(data.state);
+                    new PNotify({
+                        type: 'success',
+                        title: 'Node change state',
+                        text: 'Node {{ node_ref }} now marked ' + data.state,
+                        delay: 4000
+                    });
+                };
+            });
+        });
+    });
+</script>
+

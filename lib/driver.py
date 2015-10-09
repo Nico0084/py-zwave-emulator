@@ -193,6 +193,8 @@ class Driver:
         (self._currentCtrlCommands[FUNC_ID_ZW_ADD_NODE_TO_NETWORK].crtlState in [ControllerState.Waiting, ControllerState.InProgress]) else False)
     IsInExcludeState = property(lambda self: True if FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK in self._currentCtrlCommands and \
         (self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK].crtlState in [ControllerState.Waiting, ControllerState.InProgress]) else False)
+    IsInReplaceNodeFailState = property(lambda self: True if FUNC_ID_ZW_REPLACE_FAILED_NODE in self._currentCtrlCommands and \
+            (self._currentCtrlCommands[FUNC_ID_ZW_REPLACE_FAILED_NODE].crtlState in [ControllerState.Waiting, ControllerState.InProgress]) else False)
 
     def GetClassInformation(self):
         return {'name': 'COMMAND_CLASS_NO_OPERATION',  'id': 0x00}
@@ -290,7 +292,6 @@ class Driver:
             msg.Append(ADD_NODE_STATUS_ADDING_SLAVE)
             msg.Append(node.nodeId)
             msgTemp = node.getNodeInfoClass()
-            print msgTemp
             for d in msgTemp: msg.Append(d) # Add node CommandClasses
             self._currentCtrlCommands[FUNC_ID_ZW_ADD_NODE_TO_NETWORK].setCtrlState(ControllerState.InProgress, ADD_NODE_STATUS_ADDING_SLAVE)
             self._currentCtrlCommands[FUNC_ID_ZW_ADD_NODE_TO_NETWORK].nodeId = node.nodeId
@@ -408,6 +409,92 @@ class Driver:
             self._log.write(LogLevel.Warning, self, "{0} is not in exclusion mode, can't stop it !".format(self._manager.matchHomeID(self.homeId))) 
             return {"error":  u"{0} is not in exclusion mode, can't stop it !".format(self._manager.matchHomeID(self.homeId))}
 
+    def terminateRemoveFaileNode(self):
+        if self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_FAILED_NODE_ID].ctrlStateNum == FAILED_NODE_REMOVE_STARTED :
+            msg = Msg( "Request FUNC_ID_ZW_REMOVE_FAILED_NODE_ID - FAILED_NODE_REMOVED", self.nodeId,  REQUEST, FUNC_ID_ZW_REMOVE_FAILED_NODE_ID)
+            msg.Append(self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_FAILED_NODE_ID].callbackId)
+            msg.Append(FAILED_NODE_REMOVED)
+            node = self.GetNode(self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_FAILED_NODE_ID].nodeId)
+            self.UnRegisterNode(node)
+            self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_FAILED_NODE_ID].setCtrlState(ControllerState.Completed, FAILED_NODE_REMOVED)
+            self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_FAILED_NODE_ID].nodeId = 0xff
+            self.SendMsg(msg, MsgQueue.Command, True)
+        elif self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_FAILED_NODE_ID].ctrlStateNum == FAILED_NODE_NOT_FOUND :
+            node = self.GetNode(self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_FAILED_NODE_ID].nodeId)
+            if node and not node.IsFailed :
+                msg = Msg( "Request FUNC_ID_ZW_REMOVE_FAILED_NODE_ID - FAILED_NODE_OK", self.nodeId,  REQUEST, FUNC_ID_ZW_REMOVE_FAILED_NODE_ID)
+                msg.Append(self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_FAILED_NODE_ID].callbackId)
+                msg.Append(FAILED_NODE_OK)
+                self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_FAILED_NODE_ID].setCtrlState(ControllerState.Completed, FAILED_NODE_OK)
+            else :
+                msg = Msg( "Request FUNC_ID_ZW_REMOVE_FAILED_NODE_ID - FAILED_NODE_NOT_REMOVED", self.nodeId,  REQUEST, FUNC_ID_ZW_REMOVE_FAILED_NODE_ID)
+                msg.Append(self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_FAILED_NODE_ID].callbackId)
+                msg.Append(FAILED_NODE_NOT_REMOVED)
+                self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_FAILED_NODE_ID].setCtrlState(ControllerState.Completed, FAILED_NODE_NOT_REMOVED)
+            msg.SetExpectedCallBack(self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_FAILED_NODE_ID].callbackId)
+            self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_FAILED_NODE_ID].nodeId = 0xff
+            self.SendMsg(msg, MsgQueue.Command, True)
+        else :
+            self._log.write(LogLevel.Warning, self, "Controller {0} is not in remove node failed process".format(self.homeId))
+
+    def replaceNode(self, newNode):
+        if self.IsInReplaceNodeFailState:
+            oldNode = self.GetNode(self._currentCtrlCommands[FUNC_ID_ZW_REPLACE_FAILED_NODE].nodeId)
+            print "oldNode : ",  oldNode
+            newNode.nodeId = oldNode.nodeId
+            newNode.homeId = oldNode.homeId
+            newNode.neighbors = oldNode.neighbors
+            newNode.name = oldNode.name
+            newNode.location = oldNode.location
+            newNode.SetAddingNode()
+            msg = Msg( "Request FUNC_ID_ZW_REPLACE_FAILED_NODE - FAILED_NODE_REPLACE_DONE", self.nodeId,  REQUEST, FUNC_ID_ZW_REPLACE_FAILED_NODE)
+            msg.Append(self._currentCtrlCommands[FUNC_ID_ZW_REPLACE_FAILED_NODE].callbackId) # TODO: Check if necessary in case of internal inclusion ?
+            msg.Append(FAILED_NODE_REPLACE_DONE)
+            msg.Append(newNode.nodeId)
+            self._currentCtrlCommands[FUNC_ID_ZW_REPLACE_FAILED_NODE].setCtrlState(ControllerState.Completed, FAILED_NODE_REPLACE_DONE)
+            self._currentCtrlCommands[FUNC_ID_ZW_REPLACE_FAILED_NODE].nodeId = newNode.nodeId
+            self.UnRegisterNode(oldNode)
+            self.RegisterNode(newNode.nodeId, False)
+            msg.SetExpectedCallBack(self._currentCtrlCommands[FUNC_ID_ZW_REPLACE_FAILED_NODE].callbackId)
+            self.SendMsg(msg, MsgQueue.Command, True)
+            return True
+        else :
+            self._log.write(LogLevel.Warning, self, "Controller {0} is not in replace node failed process".format(self.homeId))
+            return False
+    
+    def handleReplaceFaileNode(self):
+        if self.IsInReplaceNodeFailState:
+            if self._currentCtrlCommands[FUNC_ID_ZW_REPLACE_FAILED_NODE].ctrlStateNum == FAILED_NODE_REMOVE_STARTED :
+                msg = Msg( "Request FUNC_ID_ZW_REPLACE_FAILED_NODE - FAILED_NODE_REPLACE_WAITING", self.nodeId,  REQUEST, FUNC_ID_ZW_REPLACE_FAILED_NODE)
+                msg.Append(self._currentCtrlCommands[FUNC_ID_ZW_REPLACE_FAILED_NODE].callbackId)
+                msg.Append(FAILED_NODE_REPLACE_WAITING)
+                self._currentCtrlCommands[FUNC_ID_ZW_REPLACE_FAILED_NODE].setCtrlState(ControllerState.InProgress, FAILED_NODE_REPLACE_WAITING)
+                msg.SetExpectedCallBack(self._currentCtrlCommands[FUNC_ID_ZW_REPLACE_FAILED_NODE].callbackId)
+                self.SendMsg(msg, MsgQueue.Command, True)
+                # At this step, We must exclude failed node and wait for new inclusion.
+                threading.Thread(None, self.waitForStepCmd, "th_handleWaitForStepCmd_ctrl_{0}.".format(self.homeId), (),
+                    {'callback': self.handleReplaceFaileNode, 
+                      'timing' : 0.8
+                    }).start()
+            elif self._currentCtrlCommands[FUNC_ID_ZW_REPLACE_FAILED_NODE].ctrlStateNum == FAILED_NODE_REPLACE_WAITING :
+                node = self.GetNode(self._currentCtrlCommands[FUNC_ID_ZW_REPLACE_FAILED_NODE].nodeId)
+                if node :
+                    if not node.IsFailed :
+                        msg = Msg( "Request FUNC_ID_ZW_REPLACE_FAILED_NODE - FAILED_NODE_OK", self.nodeId,  REQUEST, FUNC_ID_ZW_REPLACE_FAILED_NODE)
+                        msg.Append(self._currentCtrlCommands[FUNC_ID_ZW_REPLACE_FAILED_NODE].callbackId)
+                        msg.Append(FAILED_NODE_OK)
+                        self._currentCtrlCommands[FUNC_ID_ZW_REPLACE_FAILED_NODE].setCtrlState(ControllerState.Completed, FAILED_NODE_OK)
+                    else : return
+                else :
+                    msg = Msg( "Request FUNC_ID_ZW_REPLACE_FAILED_NODE - FAILED_NODE_REPLACE_FAILED", self.nodeId,  REQUEST, FUNC_ID_ZW_REPLACE_FAILED_NODE)
+                    msg.Append(self._currentCtrlCommands[FUNC_ID_ZW_REPLACE_FAILED_NODE].callbackId)
+                    msg.Append(FAILED_NODE_REPLACE_FAILED)
+                    self._currentCtrlCommands[FUNC_ID_ZW_REPLACE_FAILED_NODE].setCtrlState(ControllerState.Waiting, FAILED_NODE_REPLACE_FAILED)
+                self._currentCtrlCommands[FUNC_ID_ZW_REPLACE_FAILED_NODE].nodeId = 0xff
+                self.SendMsg(msg, MsgQueue.Command, True)
+        else :
+            self._log.write(LogLevel.Warning, self, "Controller {0} is not in replace node fail process".format(self.homeId))
+
     def setWaitingForAck(self, state):
         self._waitingForAck = state
 #        print "setWaitingForAck ", state
@@ -445,7 +532,6 @@ class Driver:
         node.nodeId = self._manager.getFirstFreeNodeIdBeforeInclude()
         node.ClearAddingNode()
         node.Reset()
-
         self._log.write(LogLevel.Info, self,  "{0}, Unregistered Node {1}".format(self._manager.matchHomeID(self.homeId), nodeId))
 
     def SendMsg(self, _msg,  _queue, firstNext = False, timing = 0):
@@ -629,28 +715,16 @@ class Driver:
                 handleCallback = False;			# Skip the callback handling - a subsequent FUNC_ID_ZW_REPLICATION_SEND_DATA request will deal with that
             elif function ==  FUNC_ID_ZW_ASSIGN_RETURN_ROUTE:
                 self._log.write(LogLevel.Detail, "" )
-                if not self.HandleAssignReturnRouteRequest( _data ):
-                    m_expectedCallbackId = _data[2] 	# The callback message won't be coming, so we force the transaction to complete
-                    m_expectedReply = 0
-                    m_expectedCommandClassId = 0
-                    m_expectedNodeId = 0
+                self.HandleAssignReturnRouteRequest( _data )
             elif function ==  FUNC_ID_ZW_DELETE_RETURN_ROUTE:
                 self._log.write(LogLevel.Detail, "" )
-                if not self.HandleDeleteReturnRouteRequest( _data ):
-                    self.m_expectedCallbackId = _data[2]		# The callback message won't be coming, so we force the transaction to complete
-                    self.m_expectedReply = 0
-                    self.m_expectedCommandClassId = 0
-                    self.m_expectedNodeId = 0
+                self.HandleDeleteReturnRouteRequest( _data )
             elif function ==  FUNC_ID_ZW_ENABLE_SUC:
                 self._log.write(LogLevel.Detail, "" )
                 HandleEnableSUCResponse( _data )
             elif function ==  FUNC_ID_ZW_REQUEST_NETWORK_UPDATE:
                 self._log.write(LogLevel.Detail, "" )
-                if not self.HandleNetworkUpdateResponse( _data ):
-                    m_expectedCallbackId = _data[2]	# The callback message won't be coming, so we force the transaction to complete
-                    m_expectedReply = 0
-                    m_expectedCommandClassId = 0
-                    m_expectedNodeId = 0
+                self.HandleNetworkUpdateResponse( _data )
             elif function ==  FUNC_ID_ZW_SET_SUC_NODE_ID:
                 self._log.write(LogLevel.Detail, "" )
                 HandleSetSUCNodeIdResponse( _data )
@@ -672,21 +746,13 @@ class Driver:
                 self.HandleRemoveNodeFromNetworkRequest( _data )
             elif function ==  FUNC_ID_ZW_REMOVE_FAILED_NODE_ID:
                 self._log.write(LogLevel.Detail, "" )
-                if not HandleRemoveFailedNodeResponse( _data ):
-                    m_expectedCallbackId = _data[2]	# The callback message won't be coming, so we force the transaction to complete
-                    m_expectedReply = 0
-                    m_expectedCommandClassId = 0
-                    m_expectedNodeId = 0
+                self.HandleRemoveFailedNodeResponse( _data )
             elif function ==  FUNC_ID_ZW_IS_FAILED_NODE_ID:
                 self._log.write(LogLevel.Detail, "" )
                 self.HandleIsFailedNodeResponse( _data )
             elif function ==  FUNC_ID_ZW_REPLACE_FAILED_NODE:
                 self._log.write(LogLevel.Detail, "" )
-                if not HandleReplaceFailedNodeResponse( _data ):
-                    m_expectedCallbackId = _data[2]	# The callback message won't be coming, so we force the transaction to complete
-                    m_expectedReply = 0
-                    m_expectedCommandClassId = 0
-                    m_expectedNodeId = 0
+                self.HandleReplaceFailedNodeResponse( _data )
             elif function ==  FUNC_ID_ZW_GET_ROUTING_INFO:
                 self._log.write(LogLevel.Detail, "" )
                 self.HandleSetRoutingInfoResponse( _data )
@@ -766,9 +832,6 @@ class Driver:
                 elif function ==  FUNC_ID_ZW_REQUEST_NETWORK_UPDATE:
                     self._log.write(LogLevel.Detail, "" )
                     HandleNetworkUpdateRequest( _data )
-                elif function ==  FUNC_ID_ZW_REMOVE_FAILED_NODE_ID:
-                    self._log.write(LogLevel.Detail, "" )
-                    HandleRemoveFailedNodeRequest( _data )
                 elif function ==  FUNC_ID_ZW_REPLACE_FAILED_NODE:
                     self._log.write(LogLevel.Detail, "" )
                     HandleReplaceFailedNodeRequest( _data )
@@ -1046,11 +1109,9 @@ class Driver:
         if node is not None :
             msg.Append(TRANSMIT_COMPLETE_OK)
             self.SendMsg(msg, MsgQueue.Command)
-            return False
         else :
             msg.Append(TRANSMIT_COMPLETE_NOROUTE)
             self.SendMsg(msg, MsgQueue.Command)
-            return False
         
     def HandleAssignReturnRouteRequest(self, _data):
         node = self.GetNode(_data[2])
@@ -1065,12 +1126,10 @@ class Driver:
             msg.Append(msg.expectedCallbackId)
             msg.Append(TRANSMIT_COMPLETE_OK)
             self.SendMsg(msg, MsgQueue.Command)
-            return False
         else :
             msg.Append(msg.expectedCallbackId)
             msg.Append(TRANSMIT_COMPLETE_NOROUTE)
             self.SendMsg(msg, MsgQueue.Command)
-            return False
 
     def HandleNodeNeighborUpdateResponse(self, _data):
         node = self.GetNode(_data[2])
@@ -1153,7 +1212,7 @@ class Driver:
             #OPTION_HIGH_POWER			=	0x80    # High power controller for inclusion/exclusion
             self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK] = ControllerCommandItem(FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK, _data[-2])
             self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK].highPower = _data[2] & OPTION_HIGH_POWER
-            self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK].setCtrlState(ControllerState.Waiting, ADD_NODE_STATUS_LEARN_READY)
+            self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK].setCtrlState(ControllerState.Waiting, REMOVE_NODE_STATUS_LEARN_READY)
             msg.Append(_data[-2]) # Add callbackId
             msg.Append(REMOVE_NODE_STATUS_LEARN_READY)
             msg.Append(TRANSMIT_COMPLETE_OK)  #0x00
@@ -1175,6 +1234,44 @@ class Driver:
         else : # Handle A response fail , Seems no possible response in zwave protocol , so send node OK
             msg.Append(FAILED_NODE_OK)
             msg.Append(_data[2])
+            self.SendMsg(msg, MsgQueue.Command, True)
+        
+    def HandleRemoveFailedNodeResponse(self, _data):
+        node = self.GetNode(_data[2])
+        msg = Msg( "Z-Wave stack for FUNC_ID_ZW_REMOVE_FAILED_NODE_ID ", _data[2],  RESPONSE, FUNC_ID_ZW_REMOVE_FAILED_NODE_ID)
+        if node is not None :
+            self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_FAILED_NODE_ID] = ControllerCommandItem(FUNC_ID_ZW_REMOVE_FAILED_NODE_ID, _data[-2], node.nodeId)
+            state = FAILED_NODE_REMOVE_STARTED if node.IsFailed else FAILED_NODE_NOT_FOUND
+            self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_FAILED_NODE_ID].setCtrlState(ControllerState.Waiting, state)
+            msg.Append(state)
+            msg.Append(_data[2])
+            msg.SetExpectedCallBack(_data[-2])
+            self.SendMsg(msg, MsgQueue.Command, True)
+            if node.IsFailed :
+                threading.Thread(None, self.waitForStepCmd, "th_handleWaitForStepCmd_ctrl_{0}.".format(self.homeId), (),
+                    {'callback': self.terminateRemoveFaileNode, 
+                      'timing' : 0.5
+                    }).start()
+        else : # Handle A response fail , Seems no possible response in zwave protocol , so send fail
+            msg.Append(FAILED_NODE_REMOVE_FAIL)
+            self.SendMsg(msg, MsgQueue.Command, True)
+        
+    def HandleReplaceFailedNodeResponse(self, _data):
+        node = self.GetNode(_data[2])
+        msg = Msg( "Z-Wave stack for FUNC_ID_ZW_REPLACE_FAILED_NODE ", _data[2],  RESPONSE, FUNC_ID_ZW_REPLACE_FAILED_NODE)
+        if node is not None :
+            self._currentCtrlCommands[FUNC_ID_ZW_REPLACE_FAILED_NODE] = ControllerCommandItem(FUNC_ID_ZW_REPLACE_FAILED_NODE, _data[-2], node.nodeId)
+            state = FAILED_NODE_REMOVE_STARTED if node.IsFailed else FAILED_NODE_REPLACE_FAILED
+            self._currentCtrlCommands[FUNC_ID_ZW_REPLACE_FAILED_NODE].setCtrlState(ControllerState.Waiting, state)
+            msg.Append(state)
+            msg.SetExpectedCallBack(_data[-2])
+            self.SendMsg(msg, MsgQueue.Command, True)
+            threading.Thread(None, self.waitForStepCmd, "th_handleWaitForStepCmd_ctrl_{0}.".format(self.homeId), (),
+                {'callback': self.handleReplaceFaileNode, 
+                  'timing' : 0.5
+                }).start()
+        else : # Handle A response fail , Seems no possible response in zwave protocol , so send fail
+            msg.Append(FAILED_NODE_REMOVE_FAIL)
             self.SendMsg(msg, MsgQueue.Command, True)
         
     def getFirstMsg(self):

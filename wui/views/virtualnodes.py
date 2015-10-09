@@ -46,7 +46,17 @@ def virtualnode_configs(node_ref):
             )
     return json.dumps({ "error": "Virtual Node not find" }), 500 
 
-
+@app.route('/virtualnodes/<node_ref>/state/<state>')
+def virtualnode_set_state(node_ref, state):
+    manager =  Manager()
+    homeId = node_ref.split(".")[0]
+    nodeId = int(node_ref.split(".")[1])
+    node = manager.getNode(homeId, nodeId)
+    if node is not None :
+        node.setFailed(state)
+        return jsonify(result='success', state=state)
+    return json.dumps({ "error": "Virtual Node not find" }), 500 
+    
 @app.route('/virtualnodes/<node_ref>/update_config_poll')
 def virtualnode_cmdClasse_update_config_poll(node_ref):
     inputId = request.args.get('inputId', 0, type=str)
@@ -303,16 +313,33 @@ def virtualnode_include_node(homeId, nodeId):
     manager =  Manager()
     nodeId = int(nodeId)
     node = manager.getNode(0, nodeId)
-    if node :
-        if manager.includeNewNode(int(homeId), node):
-            result = 'success'
-            msg = u"New Node include in {0}, reload virtual nodes list.".format(nodeId)
+    homeId = int(homeId)
+    driver = manager.GetDriver(homeId)
+    if driver.IsInIncludeState :
+        if node :
+            if manager.includeNewNode(int(homeId), node):
+                result = 'success'
+                msg = u"New Node include in {0}, reload virtual nodes list.".format(nodeId)
+            else :
+                msg = u"error on inclusion {0}. Check if Controller is in inclusion".format(nodeId)
+                result = 'error'
         else :
-            msg = u"error on inclusion {0}. Check if Controller is in inclusion".format(nodeId)
+            msg = u"error on inclusion node {0} node found.".format(nodeId)
+            result = 'error'
+    elif driver.IsInReplaceNodeFailState:
+        if node :
+            if driver.replaceNode(node):
+                result = 'success'
+                msg = u"New Node include in {0} with replace fail node, reload virtual nodes list.".format(nodeId)
+            else :
+                msg = u"error on inclusion {0} with replace fail node. Check if Controller is in inclusion".format(nodeId)
+                result = 'error'
+        else :
+            msg = u"error on inclusion node {0} node found.".format(nodeId)
             result = 'error'
     else :
-        msg = u"error on inclusion node {0} node found.".format(nodeId)
-        result = 'error'
+        msg = u"error controller {0} not in inclusion or replace mode.".format(manager.matchHomeID(homeId))
+        result  = "error"
     return jsonify(result=result,  msg=msg)
 
 @app.route('/virtualnodes/inclusion/<homeId>/<cmd>')

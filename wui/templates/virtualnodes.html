@@ -69,19 +69,33 @@
       {% for driver in listdrivers %}
         <h2>Network on HomeID {{ manager.matchHomeID(driver.homeId) }} (Serial port : {{ driver.serialport }}) </h2>
         <div class="row">
-            <button type="button" id="inclusioncmd_{{ driver.homeId }}" class="btn btn-primary">
-              <span id="inclusioncmdic_{{ driver.homeId }}" class='glyphicon glyphicon-log-in' aria-hidden='true' value='start'></span>
-              <span id="inclusioncmdtx_{{ driver.homeId }}"> Start Inclusion Mode</span>
-            </button>
-            <button type="button" id="exclusioncmd_{{ driver.homeId }}" class="btn btn-warning pull-right">
-              <span id="exclusioncmdic_{{ driver.homeId }}" class='glyphicon glyphicon-log-out' aria-hidden='true' value='start'></span>
-              <span id="exclusioncmdtx_{{ driver.homeId }}"> Start Exclusion Mode</span>
-            </button>
+            {% if driver.IsInIncludeState %}
+                <button type="button" id="inclusioncmd_{{ driver.homeId }}" class="btn btn-info">
+                  <span id="inclusioncmdic_{{ driver.homeId }}" class='glyphicon glyphicon-record' aria-hidden='true' value='stop'></span>
+                  <span id="inclusioncmdtx_{{ driver.homeId }}"> Stop Inclusion Mode</span>
+                </button>
+            {% else %}
+                <button type="button" id="inclusioncmd_{{ driver.homeId }}" class="btn btn-primary">
+                  <span id="inclusioncmdic_{{ driver.homeId }}" class='glyphicon glyphicon-log-in' aria-hidden='true' value='start'></span>
+                  <span id="inclusioncmdtx_{{ driver.homeId }}"> Start Inclusion Mode</span>
+                </button>
+            {% endif %}
+            {% if driver.IsInExcludeState %}
+                <button type="button" id="exclusioncmd_{{ driver.homeId }}" class="btn btn-danger pull-right">
+                  <span id="exclusioncmdic_{{ driver.homeId }}" class='glyphicon glyphicon-record' aria-hidden='true' value='stop'></span>
+                  <span id="exclusioncmdtx_{{ driver.homeId }}"> Stop Exclusion Mode</span>
+                </button>
+            {% else %}
+                <button type="button" id="exclusioncmd_{{ driver.homeId }}" class="btn btn-warning pull-right">
+                  <span id="exclusioncmdic_{{ driver.homeId }}" class='glyphicon glyphicon-log-out' aria-hidden='true' value='start'></span>
+                  <span id="exclusioncmdtx_{{ driver.homeId }}"> Start Exclusion Mode</span>
+                </button>
+            {% endif %}
         <div>
             <div class="list-group">
                 <h3 class="list-group-item">
                 Nodes list
-                <span class="badge">{{ listnodes|length }}</span>
+                <span class="badge">{{ manager.getListNodeId(driver.homeId)|length }}</span>
                 </h3>
                 {% for node in listnodes %} 
                     {% if node.homeId ==  driver.homeId %}
@@ -94,7 +108,11 @@
                         <span class='glyphicon glyphicon-chevron-right' aria-hidden='true'></span> 
                         {{ node.nodeId }} -  {{ extraTxt }} {{ node.GetProductName }}
                         <button id="exclude_{{ node.homeId }}_{{ node.nodeId }}" name="{{ node.nodeId }} -  {{ extraTxt }} {{ node.GetProductName }}" type="button" class="btn btn-xs btn-warning pull-right">Exclusion</button>
-                        <span class="label label-info status status-label status-alive pull-right"> Init</span>
+                        {% if node.IsFailed %}
+                            <span class="label label-info status status-label status-failed pull-right"> Failed </span>
+                        {% else %}
+                            <span class="label label-info status status-label status-alive pull-right">  Alive </span>
+                        {% endif %}
                         </a>
                     {% endif %}
                 {% endfor %}
@@ -115,6 +133,7 @@
           </div>
           <div class="modal-body">
             <p>Include node in a network (controller)</p>
+            <p>Replace a failed node if this mode is activate.</p>
             <p id="nodetoinclude"></p>
             <label for="listCtrl">Select the network :</label>
             <select class='form-control actdisable' id='listCtrl' >
@@ -128,7 +147,7 @@
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-            <button id="includenode" type="button" class="btn btn-primary" data-dismiss="modal">Inclusion</button>
+            <button id="includenode" type="button" class="btn btn-primary" data-dismiss="modal">Inclusion (with replace in case)</button>
           </div>
         </div>
       </div>
@@ -174,8 +193,9 @@
                         type: 'success',
                         title: 'Node Created',
                         text: data.msg,
-                        delay: 4000
+                        delay: 2000
                     });
+                    setTimeout(function() { window.location.href = "/virtualnodes" }, 2000);
                 };
             });
         };
@@ -203,8 +223,9 @@
                         type: 'success',
                         title: 'Node is include',
                         text: data.msg,
-                        delay: 4000
+                        delay: 2000
                     });
+                    setTimeout(function() { window.location.href = "/virtualnodes" }, 2000);
                 };
             });
         };
@@ -271,6 +292,7 @@
                         text: data.msg,
                         delay: 4000
                     });
+                    setTimeout(function() { window.location.href = "/virtualnodes" }, 2000);
                 };
             });
         };
