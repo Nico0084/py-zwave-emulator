@@ -61,13 +61,37 @@ c_dayNames = [
     ]
 
 class Clock(CommandClass):
-    
+
     StaticGetCommandClassId = 0x81
     StaticGetCommandClassName = "COMMAND_CLASS_CLOCK"
-    
+
     def __init__(self, node,  data):
         CommandClass.__init__(self, node, data)
-    
+
     GetCommandClassId = property(lambda self: self.StaticGetCommandClassId)
     GetCommandClassName = property(lambda self: self.StaticGetCommandClassName)
+
+    def getFullNameCmd(self,  _id):
+        return ClockCmd().getFullName(_id)
+
+def ProcessMsg(self, _data, instance=1, multiInstanceData = []):
+        print '++++++++++++++++ Clock ProcessMsg +++++++++++++++'
+        if _data[0] == ClockCmd.Get:
+            msg = Msg("Clock_report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
+            msg.Append(TRANSMIT_COMPLETE_OK)
+            msg.Append(self.nodeId)
+            msg.Append(4)
+            msg.Append(self.GetCommandClassId)
+            msg.Append(ClockCmd.Report)
+            data = self._node.getValue(self.GetCommandClassId, instance, ClockIndex.Day).getValueByte() << 5
+            data += self._node.getValue(self.GetCommandClassId, instance, ClockIndex.Hour).getValueByte()
+            msg.Append(data)
+            msg.Append(self._node.getValue(self.GetCommandClassId, instance, ClockIndex.Minute).getValueByte())
+            self.GetDriver.SendMsg(msg, MsgQueue.NoOp)
+
+        else:
+            self._log.write(LogLevel.Warning, self, "CommandClass REQUEST {0}, Not implemented : {1}".format(self.getFullNameCmd(_data[0]), GetDataAsHex(_data)))
+
+
+
 

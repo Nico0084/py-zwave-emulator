@@ -50,7 +50,7 @@ class OZwaveConfigException(Exception):
 
 class DeviceProduct():
     """Read and handle individual product file recognized by open-zwave."""
-    
+
     def __init__(self,  path,  config):
         """Read XML file "product".xml of open-zwave C++ lib"""
         self.xml_file = path + '/'  + config
@@ -62,7 +62,7 @@ class DeviceProduct():
                 self.protocol = {'nodeinfosupported' : True}
             for a in p.getElementsByTagName("APIcall"):
                 try :
-                    self.protocol['APIcall'] = {'function': int(a.attributes.get("function").value.strip(), 16), 
+                    self.protocol['APIcall'] = {'function': int(a.attributes.get("function").value.strip(), 16),
                                                            'present=': True if a.attributes.get("present").value.strip() == 'true' else False}
                 except : pass
         self.commandsClass = []
@@ -77,7 +77,7 @@ class DeviceProduct():
                             for g in a.getElementsByTagName("Group") :
                                 group = {"index" : int(g.attributes.get("index").value.strip()),
                                               "max_associations" :  int(g.attributes.get("max_associations").value.strip()),
-                                              "label" : unicode(g.attributes.get("label").value.strip(), 'utf-8'), 
+                                              "label" : unicode(g.attributes.get("label").value.strip(), 'utf-8'),
                                               "auto" : g.attributes.get("auto").value.strip()}
                                 groups.append(dict(group))
                         except: pass
@@ -95,20 +95,20 @@ class DeviceProduct():
 #                        print "+++++++",  v.toxml()
                         value = {"type" :  v.attributes.get("type").value.strip(),
                                        "genre" : v.attributes.get("genre").value.strip(),
-                                       "index" : int(v.attributes.get("index").value.strip()), 
+                                       "index" : int(v.attributes.get("index").value.strip()),
                                        "value" :v.attributes.get("value").value.strip()}
                         try:
                             value["instance"] = int(v.attributes.get("instance").value.strip())
                         except: pass
                         try:
                             value["size"] = int(v.attributes.get("size").value.strip())
-                        except: pass 
+                        except: pass
                         try:
                             value["units"] = v.attributes.get("units").value.strip()
                         except: pass
                         try:
-                            value["min"] = int(v.attributes.get("min").value.strip()), 
-                            value["max"] = int(v.attributes.get("max").value.strip()), 
+                            value["min"] = int(v.attributes.get("min").value.strip()),
+                            value["max"] = int(v.attributes.get("max").value.strip()),
                         except: pass
                         try:
                             value["help"] = v.getElementsByTagName("Help")[0].firstChild.data
@@ -124,7 +124,7 @@ class DeviceProduct():
                 cmdClass['values'] = values
 #            print cmdClass
             self.commandsClass.append(cmdClass)
-        
+
     def getAllTranslateText(self, tabtext = []):
         """Return tab with all text should be translate"""
         for cmdC in self.commandsClass :
@@ -144,7 +144,7 @@ class DeviceProduct():
 
 class Manufacturers():
     """Read and handle list of manufacturers and products recognized by open-zwave."""
-    
+
     def __init__(self,  path):
         """Read XML file manufacturer_specific.xml of open-zwave C++ lib"""
         self.path = path
@@ -159,8 +159,8 @@ class Manufacturers():
             products = []
             try:
                 for p in m.getElementsByTagName("Product"):
-                    product = {"type" :  int(p.attributes.get("type").value.strip(), 16), 
-                                       "id" : int(p.attributes.get("id").value.strip(), 16), 
+                    product = {"type" :  int(p.attributes.get("type").value.strip(), 16),
+                                       "id" : int(p.attributes.get("id").value.strip(), 16),
                                        "name" :p.attributes.get("name").value.strip()}
                     try:
                         product["config"] = p.attributes.get("config").value.strip()
@@ -171,8 +171,8 @@ class Manufacturers():
             if products != [] :
                 item["products"] = products
             self.manufacturers.append(item)
-     #  print self.manufacturers 
-    
+     #  print self.manufacturers
+
     def getMemoryUsage(self):
         """Renvoi l'utilisation memoire en octets"""
         return sys.getsizeof(self) + sum(sys.getsizeof(v) for v in self.__dict__.values()) + sys.getsizeof(self.xml_content)
@@ -186,11 +186,11 @@ class Manufacturers():
         except:
             ref = 'name'
         for m in self.manufacturers :
-            if m[ref] == manufacturer : 
+            if m[ref] == manufacturer :
                 retval = m
                 break
         return retval
-    
+
     def searchProduct(self,  product):
         """Return Product and Manufacturer if product is find."""
         retval = []
@@ -204,18 +204,18 @@ class Manufacturers():
             except: pass
             if mf : retval.append(mf)
         return retval
-        
+
     def getProduct(self,  name) :
         """Return all informations of a product."""
         products = self.searchProduct(name)
-        if products[0] : 
+        if products[0] :
 #            print products[0]['products'][0]
             if products[0]['products'][0].has_key('config') :
                 return DeviceProduct(self.path, products[0]['products'][0]['config'])
             else : return None
         else :
             return None
-            
+
     def searchProductType(self,  type,  id = None):
         """Return Product and Manufacturer if product is find."""
         retval = []
@@ -231,7 +231,7 @@ class Manufacturers():
             except: pass
             if mf : retval.append(mf)
         return retval
-    
+
     def getAllProductsName(self):
         """Retourn all products recognized without doublon."""
         manufacturers = []
@@ -255,7 +255,7 @@ class Manufacturers():
             except: pass
             manufacturers.append({'manufacturer': m['name'], 'id': m['id'], 'products': products})
         return manufacturers
-    
+
     def getAllProductsTranslateText(self):
         tabtext=[]
         products=[]
@@ -274,11 +274,11 @@ class Manufacturers():
 
 class networkFileConfig():
     """Read and manage open-zwave xml zwave Network composing"""
-    
+
     def __init__(self,  path):
         """Read XML file zwcfg_<HOMEID>.xml of open-zwave C++ lib"""
         self.xml_file = path
-        
+
         self.xml_content = minidom.parse(self.xml_file)
         # read xml file
         self.nodes = []
@@ -295,7 +295,7 @@ class networkFileConfig():
             except :
                 driver['pollIntervalBetween'] = True if a.attributes.get("poll_interval_between").value.strip()== "true" else False
             self.drivers.append(driver)
-        for n in self.xml_content.getElementsByTagName("Node"):         
+        for n in self.xml_content.getElementsByTagName("Node"):
             item = {'id' : int(n.attributes.get("id").value.strip())}
 #            print n ,  item['id']
             try :
@@ -323,10 +323,10 @@ class networkFileConfig():
                 item['nodeinfosupported'] = True
             try :
                 m = n.getElementsByTagName('Manufacturer')[0]
-                item['manufacturer'] = {'id' : int(m.attributes.get("id").value.strip(), 16), 
+                item['manufacturer'] = {'id' : int(m.attributes.get("id").value.strip(), 16),
                                                     'name' : m.attributes.get("name").value.strip(), }
-                item['product'] = {'type' :int(m.getElementsByTagName('Product')[0].attributes.get("type").value.strip(), 16), 
-                                            'id' : int(m.getElementsByTagName('Product')[0].attributes.get("id").value.strip(), 16), 
+                item['product'] = {'type' :int(m.getElementsByTagName('Product')[0].attributes.get("type").value.strip(), 16),
+                                            'id' : int(m.getElementsByTagName('Product')[0].attributes.get("id").value.strip(), 16),
                                             'name' :m.getElementsByTagName('Product')[0].attributes.get("name").value.strip(), }
             except : pass
             cmdsClass = []
@@ -398,10 +398,15 @@ class networkFileConfig():
                                         group = {"index" : int(g.attributes.get("index").value.strip()),
                                                       "max_associations" :  int(g.attributes.get("max_associations").value.strip()),
                                                       "label" :  u"{0}".format(g.attributes.get("label").value.strip()),
-                                                      "auto" : g.attributes.get("auto").value.strip(), 
+                                                      "auto" : g.attributes.get("auto").value.strip(),
                                                       "nodes" : []}
                                         for n in g.getElementsByTagName("Node"):
-                                            group["nodes"].append(int(n.attributes.get("id").value.strip()))
+#                                            group["nodes"].append(int(n.attributes.get("id").value.strip()))
+                                            node = {'id': int(n.attributes.get("id").value.strip()), 'instance': 0x00}
+                                            try:
+                                                node['instance'] =  int(n.attributes.get("instance").value.strip())
+                                            except: pass
+                                            group["nodes"].append(node)
                                         groups.append(dict(group))
                                 except: pass
                                 Associations["groups"]= groups
@@ -417,14 +422,14 @@ class networkFileConfig():
                                 if value["type"] == 'list':
                                     items = []
                                     for i in v.getElementsByTagName("Item"):
-                                        items.append({"label": i.attributes.get("label").value.strip(), 
+                                        items.append({"label": i.attributes.get("label").value.strip(),
                                                                 "value": int(i.attributes.get("value").value.strip())})
                                     value["items"] = items
                                 try:
                                     value["help"] = v.getElementsByTagName("Help")[0].firstChild.data
                                 except: pass
                                 values.append(value)
-                            except: 
+                            except:
                                 print "*** error on decoding {0} : {1} ".format(item['product']["name"],  v.attributes.get("label").value.strip())
                                 print value
                                 for a in v.attributes.keys(): print "attribute : ", a
@@ -435,7 +440,7 @@ class networkFileConfig():
                         sensorMaps = []
                         for sM in c.getElementsByTagName("SensorMap"):
                             sensorMaps.append({"index": int(sM.attributes.get("index").value.strip()), "type": int(sM.attributes.get("type").value.strip())})
-                        if sensorMaps : 
+                        if sensorMaps :
                             cmdClass["sensorMaps"] = sensorMaps
                     except : pass
                     cmdsClass.append(cmdClass)
@@ -443,19 +448,19 @@ class networkFileConfig():
             if cmdsClass != [] :
                 item["cmdsClass"] = cmdsClass
             if item.has_key("product"): self.nodes.append(item)
-#        print self.nodes 
-    
+#        print self.nodes
+
     def listeNodes(self):
         retval = []
         for node in self.nodes:
             retval.append(node['id'])
         return retval
-        
+
     def getNode(self,  nodeId):
         for node in self.nodes:
             if node['id'] == nodeId : return node
         return None
-        
+
     def getDriver(self, num):
         if self.drivers :
            if num < len(self.drivers):
@@ -464,24 +469,24 @@ class networkFileConfig():
 
 class DeviceClasses:
     """Read and manage open-zwave device_classes.xml."""
-    
+
     def __init__(self,  path):
 #        import pprint
-         
+
         """Read XML device_classes.xml of open-zwave C++ lib"""
         self.xml_file = path + "\device_classes.xml"
-        
+
         self.xml_content = minidom.parse(self.xml_file)
         # read xml file
         self.clssBasic = []
         self.clssGeneric = []
         for a in self.xml_content.getElementsByTagName("DeviceClasses"):
             xmlns = a.attributes.get("xmlns").value.strip()
-        for a in self.xml_content.getElementsByTagName("Basic"):         
+        for a in self.xml_content.getElementsByTagName("Basic"):
             item = {'key' : a.attributes.get("key").value.strip()}
             item['label'] = a.attributes.get("label").value.strip()
             self.clssBasic.append(item)
-        for a in self.xml_content.getElementsByTagName("Generic"):         
+        for a in self.xml_content.getElementsByTagName("Generic"):
             item = {'key' : a.attributes.get("key").value.strip()}
             item['label'] = a.attributes.get("label").value.strip()
             try :
@@ -490,17 +495,17 @@ class DeviceClasses:
                 item['command_classes'] = []
             item['Specific'] = []
             try :
-                for s in a.getElementsByTagName("Specific"):         
+                for s in a.getElementsByTagName("Specific"):
                     itemSpec = {'key' : s.attributes.get("key").value.strip()}
                     itemSpec['label'] = s.attributes.get("label").value.strip()
                     try :
                         itemSpec['command_classes'] = s.attributes.get("command_classes").value.strip().split(',')
                     except :
-                        itemSpec['command_classes'] = [] 
+                        itemSpec['command_classes'] = []
                     try :
                         itemSpec['basic'] = s.attributes.get("basic").value.strip()
                     except :
-                        itemSpec['basic'] = "" 
+                        itemSpec['basic'] = ""
                     item['Specific'] .append(itemSpec)
             except :
                 pass
@@ -508,31 +513,31 @@ class DeviceClasses:
 #        print self.clssBasic
 #        print "*********************"
 #        pprint.pprint(self.clssGeneric)
-        
+
     def getBasic(self, clss):
-        if not isinstance(clss, int) : 
+        if not isinstance(clss, int) :
             clss = int(clss,  16)
         for c in self.clssBasic:
             if int(clss) == int(c['key'], 16) : return c
         return None
-        
+
     def getGeneric(self, generic):
 #        import pprint
-        
-        if not isinstance(generic, int) : 
+
+        if not isinstance(generic, int) :
             generic = int(generic,  16)
         for c in self.clssGeneric:
-            if int(generic) == int(c['key'], 16) : 
+            if int(generic) == int(c['key'], 16) :
 #                pprint.pprint(c)
                 return c
         return None
-   
+
     def getSpecific(self, generic,  clss):
 #        import pprint
 
-        if not isinstance(generic, int) : 
+        if not isinstance(generic, int) :
             generic = int(generic,  16)
-        if not isinstance(clss, int) : 
+        if not isinstance(clss, int) :
             clss = int(clss,  16)
 #        print "****** find :", generic,  clss
         for g in self.clssGeneric:
@@ -541,7 +546,7 @@ class DeviceClasses:
 #                pprint.pprint(g)
                 for s in g['Specific']:
 #                    print '****** cherche dans :', s
-                    if int(clss) == int(s['key'], 16) : 
+                    if int(clss) == int(s['key'], 16) :
 #                        print '********* Spécific trouvé :'
 #                        pprint.pprint(s)
                         return s
@@ -551,19 +556,19 @@ class DeviceClasses:
         mClass = []
         for cls in classList :
             pass
-        
-        
-        
+
+
+
 if __name__ == "__main__":
     print sys.platform
 #    ozw_path = "/home/admdomo/python-openzwave/openzwave/config"
 #    ozw_conf = "/home/admdomo/Partage-VM/domogik-plugin-ozwave/data/zwcfg_0x014d0f18.xml"
 #    trans_file = "/var/tmp/exporttrad.txt"
-    
+
     ozw_path ="C:\Python_prog\Dev_OZW\openzwave\config"
     ozw_conf = "C:\Python_prog\domogik-plugin-ozwave\data\zwcfg_0x01ff11ff.xml"
     trans_file = "C:/Python_prog/test/exporttrad.txt"
-    
+
     listManufacturers = Manufacturers(ozw_path)
     print listManufacturers.getManufacturer('0x86')
     print listManufacturers.searchProduct('Thermostat')
@@ -579,9 +584,9 @@ if __name__ == "__main__":
     for ligne in toTranslate['tabtext']:
         fich.write(ligne.encode('utf8').replace('\n','\r') + '\n\n')
     fich.close()
-    
+
     print listNodes.getDriver(0)
-    
+
     deviceClass = DeviceClasses(ozw_path)
     prod =  listManufacturers.getProduct('ZTroller')
     print prod.__dict__

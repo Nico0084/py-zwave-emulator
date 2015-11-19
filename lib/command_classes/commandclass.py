@@ -49,12 +49,12 @@ c_precisionShift	= 0x05
 
 class CommandClassException(Exception):
     """"Zwave Manager exception  class"""
-            
+
     def __init__(self, value, cmdClass = None):
         Exception.__init__(self, value)
         self.value = value
         self._cmdClass = cmdClass
-        
+
     def __str__(self):
         """Return the object representation
         @return value of the exception
@@ -66,24 +66,24 @@ class CommandClassException(Exception):
 
 class CommandClass:
     """Base of commandClass, group all methodes of spécific command class to emulate behavior."""
-    
-    RequestFlag_Static		= 0x00000001  	# Values that never change. 
-    RequestFlag_Session		= 0x00000002	   # Values that change infrequently, and so only need to be requested at start up, or via a manual refresh. 
-    RequestFlag_Dynamic		= 0x00000004	   # Values that change and will be requested if polling is enabled on the node. 
-    
+
+    RequestFlag_Static		= 0x00000001  	# Values that never change.
+    RequestFlag_Session		= 0x00000002	   # Values that change infrequently, and so only need to be requested at start up, or via a manual refresh.
+    RequestFlag_Dynamic		= 0x00000004	   # Values that change and will be requested if polling is enabled on the node.
+
     StaticRequest_Instances	= 0x01
     StaticRequest_Values		= 0x02
     StaticRequest_Version		= 0x04
-        
-    def __init__(self, node,  data):
-        
+
+    def __init__(self, node, data):
+
         self._node = node
         self.id = data['id']
         self.name = data['name'] if 'name' in data else COMMAND_CLASS_DESC[self.id]
         self.m_version = data['version'] if 'version' in data else 1
         self.m_afterMark = data['after_mark'] if 'after_mark' in data else False
         self.m_createVars = data['create_vars'] if 'create_vars' in data else True
-        self.m_overridePrecision = data['override_precision'] if 'override_precision' in data else -1
+        self.m_overridePrecision = data['override_precision'] if 'override_precision' in data else 0
         self.m_getSupported = data['getsupported'] if 'getsupported' in data else True
         self.m_isSecured = False
         self.m_SecureSupport = True
@@ -94,6 +94,7 @@ class CommandClass:
         self.mandatory = False
         self.mapping = data['mapping'] if 'mapping' in data else 0
         self.ignoremapping = data['ignoremapping'] if 'ignoremapping' in data else False
+        self.inNIF = data['innif'] if 'innif' in data else False
         self.mandatory = False
         self.ozwAdded = False # Added by openzwave for internal use
         self.extraParams = {}# In case of other parameters needed for simulation, this parameters are repported  to WUI for setting.
@@ -101,19 +102,19 @@ class CommandClass:
                                       # format : { 0: { keyParam1 : {'name': "My foo Nane", 'values' : <list of possible value >},
                                       #                     keyParamX : {'name': "My foo Nane", 'values' : <list of possible value >},
                                       #                  .......
-                                      #                    }, 
+                                      #                    },
                                       #                1 : < num instance >
                                       #                   {'keyParam1' : < value of instance 1 >,
                                       #                    'keyParamX' : < value of instance 1 >,
                                       #                     .......
-                                      #                    }, 
+                                      #                    },
                                       #                x : < num instance >
                                       #                    {'keyParam1' : < value of instance Y >,
                                       #                     'keyParamX' : < value of instance Y >,
                                       #                     .......
                                       #                    }
-                                      #              } 
-        
+                                      #              }
+
     _log = property(lambda self: self._node._log)
     _stop = property(lambda self: self._node._manager._stop)
     homeId = property(lambda self: self._node.homeId)
@@ -126,15 +127,15 @@ class CommandClass:
     GetCommandClassId = property(lambda self: 0)
     GetCommandClassName = property(lambda self: "CMD_CLSS_NOT_DECLARED")
     IsSecured = property(lambda self: self.m_isSecured)
-        
+
     def getFullNameCmd(self,  _id):
         return "BaseCommandClass.NoCmd"
-        
+
     def getDefExtraParams(self, js = False):
         """ Can be overwritten if command class use some extra parameters and handle other key than extra primary definition
             Return : definiton of extra parameters, index 0 from self.extraParams.
         """
-        if self.extraParams : 
+        if self.extraParams :
             if not js :
                 return self.extraParams[0]
             else :
@@ -145,24 +146,24 @@ class CommandClass:
                          params[p].update({k:  str(x)})
                 return params
         return None
-        
+
     def getInstanceExtraParams(self,  instance, js = False):
         """ Can be overwritten if command class use some extra parameters and handle other key than extra primary definition
             Return : extra parameters of an instance, index = instance from self.extraParams.
         """
         params = None
-        if self.extraParams : 
+        if self.extraParams :
             try :
                 if not js :
                     params = self.extraParams[instance]
                 else :
                     params = {}
-                    for k in self.extraParams[instance] : params[k] = str(self.extraParams[instance][k])  
+                    for k in self.extraParams[instance] : params[k] = str(self.extraParams[instance][k])
             except :
                 raise CommandClassException("getInstanceExtraParams, can't extra extra params for instance {0} : {1}".format(instance, self.extraParams),  self)
                 params = None
         return params
-        
+
     def setInstanceExtraParams(self,  instance, params):
         """ Can be overwritten if command class use some extra parameters and handle other key than extra primary definition
             Return : True if set or add else False.
@@ -183,7 +184,7 @@ class CommandClass:
         """
         defParams = self.getDefExtraParams()
         if defParams is not None :
-            if instance in self.extraParams : 
+            if instance in self.extraParams :
                 del(self.extraParams[instance])
                 return True
         return False
@@ -224,30 +225,30 @@ class CommandClass:
             except :
                 pass
         return valid
-        
+
     def HasStaticRequest(self, _request):
         return True if (self.m_staticRequests & _request) != 0 else False
-        
+
     def SetStaticRequest(self, _request):
         self.m_staticRequests |= _request
-    
+
     def ClearStaticRequest(self, _request):
         self.m_staticRequests &= ~_request
-        
+
     def RequestState(self, _requestFlags, _instance, _queue):
         if (_requestFlags & self.RequestFlag_Static) and self.HasStaticRequest(self.StaticRequest_Values) :
             return RequestValue( _requestFlags, 0, _instance, _queue );
         return False
-    
+
     def getByteType(self, instance):
         """Must return a specific byte to get type"""
         self._log.write(LogLevel.Warning, self, "Base commandClass object, getByteType not implemented.")
         return 0
-    
+
     def getByteIndex(self, instance):
         self._log.write(LogLevel.Warning, self, "Base commandClass object, getByteIndex not implemented.")
         return 0
-        
+
     def HandleMsg(self, *_data, **params):
         waitTime = time.time()
         print '    - Wait for {0} HandleMsg : {1}, {2}'.format(self.GetCommandClassName, GetDataAsHex(_data),  params)
@@ -256,15 +257,15 @@ class CommandClass:
             self._stop.wait(0.01)
         if not self._node.IsListeningDevice:
             wakeUp = self._node.GetCommandClass(self._node._manager.GetCommandClassId('COMMAND_CLASS_WAKE_UP'))
-            if wakeUp is not None and wakeUp.IsAwake : 
+            if wakeUp is not None and wakeUp.IsAwake :
                 wakeUp.ResetLastTime()
             else : return
         self.ProcessMsg(_data)
         print"############################################################################################"
-            
+
     def ProcessMsg(self, _data,  instance=1, multiInstanceData = []):
         self._log.write(LogLevel.Warning, self, "Base commandClass object, no processing message : {0}".format(GetDataAsHex(_data)))
-        
+
     def HandleReportChange(self, msgText, cmdClss, params, instance, queue = MsgQueue.NoOp):
         self._log.write(LogLevel.Debug, self,  "HandleReportChange, {0} - {1} - instance {2}.".format(msgText,  cmdClss.GetCommandClassName, instance))
         msg = Msg(msgText, self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
@@ -285,26 +286,28 @@ class CommandClass:
             else :
                 msg.Append(len(msgData))
             for v in msgData : msg.Append(v)
-            self.GetDriver.SendMsg(msg, queue)    
+            driver = self.GetDriver
+            if driver is not None : driver.SendMsg(msg, queue)
+            else : self._log.write(LogLevel.Warning, self, "Driver not ready, msg not sended.")
         else :
             self._log.write(LogLevel.Error, self, "No Data find to report it, {0} - {1} - instance {2}.".format(msgText,  cmdClss.GetCommandClassName, instance))
-        
+
     def getDataMsg(self, _data, instance=1):
         """Base commandClass object, no data message for base class"""
         # TODO: Implement each cmdClass by overwriting method
         self._log.write(LogLevel.Warning, self, "Base commandClass object, {0} not implemented for now.".format(self.GetCommandClassName))
         return []
-        
+
     def pollValue(self, poll):
         value = self._node.getValueByLabel(self.GetCommandClassId, poll['instance'], poll['label'])
-        if value : 
+        if value :
             self._log.write(LogLevel.Info, self, "Base commandClass object, polling {0} - {1}, instance {2}, value {3}.".format(self.GetCommandClassName, value.label,  poll['instance'], value.getVal()))
             value.setVal(value.getValueToPoll(poll['params']))
             self.HandleReportChange("BaseCmd_Report", self, [self.getCmd,  value.index], value.instance, MsgQueue.Poll)
         else : self._log.write(LogLevel.Warning, self, "Base commandClass object, Value not find, can't poll")
         return False
 
-    def ExtractValue(self, _data,  _scale,  _precision, _valueOffset = 1):
+    def ExtractValue(self, _data, _scale, _precision, _valueOffset = 1):
         size = _data[0] & c_sizeMask
         precision = (_data[0] & c_precisionMask) >> c_precisionShift
         neg = False
@@ -314,7 +317,7 @@ class CommandClass:
         value = 0
         for i in range (0, size):
             value = value << 8
-            value |= _data[i +_valueOffset]    
+            value |= _data[i +_valueOffset]
         if neg : value = - value
         if precision == 0:
             # The precision is zero, so we can just print the number directly into the string.
@@ -325,10 +328,10 @@ class CommandClass:
             insert = len(res) - precision
             res = res[0:insert] + point+ res[insert:]
         return res
-        
-    def EncodeValue(self,  value,  scale):
+
+    def EncodeValue(self, value, scale):
         size = 0
-        precision = 0
+        precision = self.m_overridePrecision
         point = locale.localeconv()['decimal_point']
         vType = type(value)
         if vType == float : value = str(value)
@@ -342,7 +345,7 @@ class CommandClass:
             try:
                 value = int(value)
             except :
-                try: 
+                try:
                     value = long(value)
                     size = 8
                 except :
@@ -368,5 +371,5 @@ class CommandClass:
         for i in range (0,  size):
             data.insert(1,  (value >> 8 * i) & 0xff)
         data[1] |= mask
-        return data   
-    
+        return data
+

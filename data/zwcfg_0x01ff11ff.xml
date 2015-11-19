@@ -1610,4 +1610,150 @@
 			</CommandClass>
 		</CommandClasses>
 	</Node>
+	<Node id="22" name="thermostatN" location="noelyne" basic="4" generic="8" specific="4" type="Setpoint Thermostat" listening="false" frequentListening="false" beaming="true" routing="true" max_baud_rate="40000" version="4" query_stage="Complete">
+			<Manufacturer id="0002" name="Danfoss">
+					<Product type="0005" id="0004" name="Z Thermostat 014G0013" />
+			</Manufacturer>
+			<CommandClasses>
+					<CommandClass id="67" name="COMMAND_CLASS_THERMOSTAT_SETPOINT" version="1" request_flags="4" override_precision="2" innif="true" base="0">
+							<Instance index="1" />
+							<Value type="decimal" genre="user" instance="1" index="1" label="Heating 1" units="C" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" value="24.00" />
+					</CommandClass>
+					<CommandClass id="70" name="COMMAND_CLASS_CLIMATE_CONTROL_SCHEDULE" version="1" request_flags="4" innif="true" change_counter="0">
+							<Instance index="1" />
+							<Value type="schedule" genre="user" instance="1" index="1" label="Monday" units="" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" />
+							<Value type="schedule" genre="user" instance="1" index="2" label="Tuesday" units="" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" />
+							<Value type="schedule" genre="user" instance="1" index="3" label="Wednesday" units="" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" />
+							<Value type="schedule" genre="user" instance="1" index="4" label="Thursday" units="" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" />
+							<Value type="schedule" genre="user" instance="1" index="5" label="Friday" units="" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" />
+							<Value type="schedule" genre="user" instance="1" index="6" label="Saturday" units="" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" />
+							<Value type="schedule" genre="user" instance="1" index="7" label="Sunday" units="" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" />
+							<Value type="list" genre="user" instance="1" index="8" label="Override State" units="" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" vindex="0" size="1">
+									<Item label="None" value="0" />
+									<Item label="Temporary" value="1" />
+									<Item label="Permanent" value="2" />
+							</Value>
+							<Value type="byte" genre="user" instance="1" index="9" label="Override Setback" units="" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="255" value="127" />
+					</CommandClass>
+					<CommandClass id="114" name="COMMAND_CLASS_MANUFACTURER_SPECIFIC" version="1" request_flags="4" innif="true">
+							<Instance index="1" />
+					</CommandClass>
+					<CommandClass id="117" name="COMMAND_CLASS_PROTECTION" version="1" request_flags="4" innif="true">
+							<Instance index="1" />
+							<Value type="list" genre="system" instance="1" index="0" label="Protection" units="" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" vindex="0" size="1">
+									<Item label="Unprotected" value="0" />
+									<Item label="Protection by Sequence" value="1" />
+									<Item label="No Operation Possible" value="2" />
+							</Value>
+					</CommandClass>
+					<CommandClass id="128" name="COMMAND_CLASS_BATTERY" version="1" request_flags="4" innif="true">
+							<Instance index="1" />
+							<Value type="byte" genre="user" instance="1" index="0" label="Battery Level" units="%" read_only="true" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="255" value="88" />
+					</CommandClass>
+					<CommandClass id="129" name="COMMAND_CLASS_CLOCK" version="1" request_flags="4" innif="true">
+							<Instance index="1" />
+							<Value type="list" genre="user" instance="1" index="0" label="Day" units="" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" vindex="6" size="1">
+									<Item label="Monday" value="1" />
+									<Item label="Tuesday" value="2" />
+									<Item label="Wednesday" value="3" />
+									<Item label="Thursday" value="4" />
+									<Item label="Friday" value="5" />
+									<Item label="Saturday" value="6" />
+									<Item label="Sunday" value="7" />
+							</Value>
+							<Value type="byte" genre="user" instance="1" index="1" label="Hour" units="" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="255" value="5" />
+							<Value type="byte" genre="user" instance="1" index="2" label="Minute" units="" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="255" value="6" />
+					</CommandClass>
+					<CommandClass id="132" name="COMMAND_CLASS_WAKE_UP" version="2" request_flags="2" innif="true">
+							<Instance index="1" />
+							<Value type="int" genre="system" instance="1" index="0" label="Wake-up Interval" units="Seconds" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="-2147483648" max="2147483647" value="1200" />
+							<Value type="int" genre="system" instance="1" index="1" label="Minimum Wake-up Interval" units="Seconds" read_only="true" write_only="false" verify_changes="false" poll_intensity="0" min="-2147483648" max="2147483647" value="60" />
+							<Value type="int" genre="system" instance="1" index="2" label="Maximum Wake-up Interval" units="Seconds" read_only="true" write_only="false" verify_changes="false" poll_intensity="0" min="-2147483648" max="2147483647" value="1800" />
+							<Value type="int" genre="system" instance="1" index="3" label="Default Wake-up Interval" units="Seconds" read_only="true" write_only="false" verify_changes="false" poll_intensity="0" min="-2147483648" max="2147483647" value="300" />
+							<Value type="int" genre="system" instance="1" index="4" label="Wake-up Interval Step" units="Seconds" read_only="true" write_only="false" verify_changes="false" poll_intensity="0" min="-2147483648" max="2147483647" value="60" />
+					</CommandClass>
+					<CommandClass id="134" name="COMMAND_CLASS_VERSION" version="1" request_flags="4" innif="true">
+							<Instance index="1" />
+							<Value type="string" genre="system" instance="1" index="0" label="Library Version" units="" read_only="true" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" value="6" />
+							<Value type="string" genre="system" instance="1" index="1" label="Protocol Version" units="" read_only="true" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" value="3.67" />
+							<Value type="string" genre="system" instance="1" index="2" label="Application Version" units="" read_only="true" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" value="1.01" />
+					</CommandClass>
+					<CommandClass id="143" name="COMMAND_CLASS_MULTI_CMD" version="1" request_flags="4" innif="true">
+							<Instance index="1" />
+					</CommandClass>
+			</CommandClasses>
+	</Node>
+	<Node id="23" name="thermostatT" location="tobias" basic="4" generic="8" specific="4" type="Setpoint Thermostat" listening="false" frequentListening="false" beaming="false" routing="true" max_baud_rate="40000" version="2" query_stage="Complete">
+			<Manufacturer id="0002" name="Danfoss">
+					<Product type="0005" id="0003" name="Z Thermostat" />
+			</Manufacturer>
+			<CommandClasses>
+					<CommandClass id="67" name="COMMAND_CLASS_THERMOSTAT_SETPOINT" version="1" request_flags="4" override_precision="2" innif="true" base="0">
+							<Instance index="1" />
+							<Value type="decimal" genre="user" instance="1" index="1" label="Heating 1" units="C" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" value="24.00" />
+					</CommandClass>
+					<CommandClass id="70" name="COMMAND_CLASS_CLIMATE_CONTROL_SCHEDULE" version="1" request_flags="4" innif="true" change_counter="0">
+							<Instance index="1" />
+							<Value type="schedule" genre="user" instance="1" index="1" label="Monday" units="" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" />
+							<Value type="schedule" genre="user" instance="1" index="2" label="Tuesday" units="" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" />
+							<Value type="schedule" genre="user" instance="1" index="3" label="Wednesday" units="" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" />
+							<Value type="schedule" genre="user" instance="1" index="4" label="Thursday" units="" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" />
+							<Value type="schedule" genre="user" instance="1" index="5" label="Friday" units="" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" />
+							<Value type="schedule" genre="user" instance="1" index="6" label="Saturday" units="" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" />
+							<Value type="schedule" genre="user" instance="1" index="7" label="Sunday" units="" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" />
+							<Value type="list" genre="user" instance="1" index="8" label="Override State" units="" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" vindex="0" size="1">
+									<Item label="None" value="0" />
+									<Item label="Temporary" value="1" />
+									<Item label="Permanent" value="2" />
+							</Value>
+							<Value type="byte" genre="user" instance="1" index="9" label="Override Setback" units="" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="255" value="127" />
+					</CommandClass>
+					<CommandClass id="114" name="COMMAND_CLASS_MANUFACTURER_SPECIFIC" version="1" request_flags="4" innif="true">
+							<Instance index="1" />
+					</CommandClass>
+					<CommandClass id="117" name="COMMAND_CLASS_PROTECTION" version="1" request_flags="4" innif="true">
+							<Instance index="1" />
+							<Value type="list" genre="system" instance="1" index="0" label="Protection" units="" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" vindex="0" size="1">
+									<Item label="Unprotected" value="0" />
+									<Item label="Protection by Sequence" value="1" />
+									<Item label="No Operation Possible" value="2" />
+							</Value>
+					</CommandClass>
+					<CommandClass id="128" name="COMMAND_CLASS_BATTERY" version="1" request_flags="4" innif="true">
+							<Instance index="1" />
+							<Value type="byte" genre="user" instance="1" index="0" label="Battery Level" units="%" read_only="true" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="255" value="60" />
+					</CommandClass>
+					<CommandClass id="129" name="COMMAND_CLASS_CLOCK" version="1" request_flags="4" innif="true">
+							<Instance index="1" />
+							<Value type="list" genre="user" instance="1" index="0" label="Day" units="" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" vindex="5" size="1">
+									<Item label="Monday" value="1" />
+									<Item label="Tuesday" value="2" />
+									<Item label="Wednesday" value="3" />
+									<Item label="Thursday" value="4" />
+									<Item label="Friday" value="5" />
+									<Item label="Saturday" value="6" />
+									<Item label="Sunday" value="7" />
+							</Value>
+							<Value type="byte" genre="user" instance="1" index="1" label="Hour" units="" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="255" value="0" />
+							<Value type="byte" genre="user" instance="1" index="2" label="Minute" units="" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="255" value="46" />
+					</CommandClass>
+					<CommandClass id="132" name="COMMAND_CLASS_WAKE_UP" version="2" request_flags="2" innif="true">
+							<Instance index="1" />
+							<Value type="int" genre="system" instance="1" index="0" label="Wake-up Interval" units="Seconds" read_only="false" write_only="false" verify_changes="false" poll_intensity="0" min="-2147483648" max="2147483647" value="900" />
+							<Value type="int" genre="system" instance="1" index="1" label="Minimum Wake-up Interval" units="Seconds" read_only="true" write_only="false" verify_changes="false" poll_intensity="0" min="-2147483648" max="2147483647" value="60" />
+							<Value type="int" genre="system" instance="1" index="2" label="Maximum Wake-up Interval" units="Seconds" read_only="true" write_only="false" verify_changes="false" poll_intensity="0" min="-2147483648" max="2147483647" value="900" />
+							<Value type="int" genre="system" instance="1" index="3" label="Default Wake-up Interval" units="Seconds" read_only="true" write_only="false" verify_changes="false" poll_intensity="0" min="-2147483648" max="2147483647" value="300" />
+							<Value type="int" genre="system" instance="1" index="4" label="Wake-up Interval Step" units="Seconds" read_only="true" write_only="false" verify_changes="false" poll_intensity="0" min="-2147483648" max="2147483647" value="60" />
+					</CommandClass>
+					<CommandClass id="134" name="COMMAND_CLASS_VERSION" version="1" request_flags="4" innif="true">
+							<Instance index="1" />
+							<Value type="string" genre="system" instance="1" index="0" label="Library Version" units="" read_only="true" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" value="6" />
+							<Value type="string" genre="system" instance="1" index="1" label="Protocol Version" units="" read_only="true" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" value="2.67" />
+							<Value type="string" genre="system" instance="1" index="2" label="Application Version" units="" read_only="true" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" value="2.51" />
+					</CommandClass>
+					<CommandClass id="143" name="COMMAND_CLASS_MULTI_CMD" version="1" request_flags="4" innif="true">
+							<Instance index="1" />
+					</CommandClass>
+			</CommandClasses>
+	</Node>
 </Driver>
