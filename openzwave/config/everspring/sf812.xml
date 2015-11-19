@@ -2,49 +2,6 @@
 <!-- EVERSPRING SF812 SMOKE DETECTOR -->
 <Product xmlns='http://code.google.com/p/open-zwave/'>
 	<!-- Configuration Parameters not supported -->
-    
-	<!-- COMMAND_CLASS_SENSOR_ALARM. -->
-	<CommandClass id="48" name="COMMAND_CLASS_SENSOR_ALARM">
-		<Value type="bool" index="0" genre="user" label="Smoke" units="" read_only="true" write_only="false" min="0" max="255" value="">
-			<Help>
-				Report the beginning and the end of smoke alarm detection
-			</Help>
-		</Value>
-	</CommandClass>	
-
-	<!-- COMMAND_CLASS_ALARM. -->
-	<CommandClass id="113" name="COMMAND_CLASS_ALARM">
-		<Instance index="1" />
-		<Instance index="2" />
-		<Value type="byte" genre="user" instance="1" index="1" label="Low Battery" value="255">
-			<Help>
-				When the battery level of the detector drops to an unacceptable level, the 
-                detector will sound once every 30 seconds and send low battery report
-                to the nodes of Grouping 1 once per hour. .
-			</Help>
-		</Value>
-		<Value type="byte" genre="user" instance="2" index="0" label="Tamper Event" value="17">
-			<Help>
-				When the tamper is triggered (that is, the detector is opened with tamper switch 
-                being released), the detector will send Tamper event report to the 
-                nodes of Grouping 1.
-			</Help>
-		</Value>
-	</CommandClass>
-
-	<!-- COMMAND_CLASS_BATTERY. -->
-	<CommandClass id="128" name="COMMAND_CLASS_BATTERY">
-		<Value type="byte" genre="user" index="0" label="Battery Level" units="%" min="20" max="100" value="">
-			<Help>
-				The users can also enquire the battery status of the detector by sending 
-                BATTERY_ GET command via controller, however, this procedure can only be 
-                done during 5-second time allowance after the tamper switch/detector being 
-                triggered or 10 minutes wakeup time when power is first applied. Once the 
-                detector receives the command, it will return BATTERY_REPORT command. 
-			</Help>
-		</Value>
-	</CommandClass>
-
 	<!-- Association Groups -->
 	<CommandClass id="133">
 		<!-- Groups and attributes based on http://www.pepper1.net/zwavedb/uploads/resources/fdeac2e16823d1f80c667ca4cc3ae32253ef4713.pdf -->
