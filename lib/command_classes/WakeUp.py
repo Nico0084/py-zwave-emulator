@@ -52,13 +52,13 @@ class WakeUpCmd(EnumNamed):
 
 
 class WakeUp(CommandClass):
-    
+
     StaticGetCommandClassId = 0x84
     StaticGetCommandClassName = "COMMAND_CLASS_WAKE_UP"
-    
+
     def __init__(self, node,  data):
         import random
-        
+
         CommandClass.__init__(self, node, data)
         if self._node.emulData:
             self.timeoutWakeUp = self._node.emulData['timeoutwakeup']
@@ -68,7 +68,7 @@ class WakeUp(CommandClass):
             self.WakeupDuration = random.randint(10,30)
         self._running = False
         self._lastTime = time.time()
-        
+
         self.m_mutex = None
         self.m_pollRequired = False
         self.m_notification = False
@@ -77,11 +77,11 @@ class WakeUp(CommandClass):
         self.m_pendingQueue = []
         self.SetStaticRequest(self.StaticRequest_Values)
         threading.Thread(None, self.handleWakeCycle, "th_handleWakeCycle_node_{0}.".format(self.nodeId), (), {}).start()
-        
+
     GetCommandClassId = property(lambda self: self.StaticGetCommandClassId)
     GetCommandClassName = property(lambda self: self.StaticGetCommandClassName)
     IsAwake = property(lambda self: self.m_awake)
-    
+
     def Init(self):
         """Starts the process of requesting node state from a sleeping device"""
         # Request the wake up interval.  When we receive the response, we
@@ -104,10 +104,10 @@ class WakeUp(CommandClass):
             if (self._node is not None) and not self._node.IsController():
                 requests |= self.RequestValue( _requestFlags, 0, _instance, _queue )
         return requests
-    
+
     def ProcessMsg(self, _data, instance=1, multiInstanceData = []):
         print '++++++++++++++++ WakeUp ProcessMsg +++++++++++++++'
-        if _data[0] == WakeUpCmd.IntervalGet: 
+        if _data[0] == WakeUpCmd.IntervalGet:
             msg = Msg("WakeUpCmd_IntervalReport", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             vInterval = self._node.getValue(self.GetCommandClassId, instance, 0)
             msgData = vInterval.getValueHex(24)
@@ -124,7 +124,7 @@ class WakeUp(CommandClass):
             self._log.write(LogLevel.Detail, self, "WakeUpCmd.NoMoreInformation received, go to sleep for {0}s.".format(self.timeoutWakeUp))
             self._lastTime = time.time()
             self.m_awake = False
-        elif _data[0] == WakeUpCmd.IntervalCapabilitiesGet: 
+        elif _data[0] == WakeUpCmd.IntervalCapabilitiesGet:
             msg = Msg("WakeUpCmd_IntervalCapabilitiesReport", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             msgData = []
             for i in range(1, 5) : # get value for capabilities index 1 to 4
@@ -175,7 +175,7 @@ class WakeUp(CommandClass):
         if self.m_awake != _state:
             self.m_awake = _state
             self._log.write(LogLevel.Info, self._node, "  Node {0} has been marked as {1}".format(self.nodeId, "awake" if self.m_awake else "asleep"))
-    
+
     def SendWakeUp(self):
         if self.GetDriver is not None :
             msg = Msg( "Send Wakeup Notification", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
@@ -185,19 +185,19 @@ class WakeUp(CommandClass):
             msg.Append(self.GetCommandClassId)
             msg.Append(WakeUpCmd.Notification)
             self.GetDriver.SendMsg(msg, MsgQueue.WakeUp)
-    
+
     def ResetLastTime(self):
         self._lastTime = time.time()
         self._log.write(LogLevel.Debug, self._node, "Msg Received, time wakeup reset ({0}s).".format(self.WakeupDuration))
-    
+
     def handleWakeCycle(self):
-        if self.timeoutWakeUp == 0 : 
+        if self.timeoutWakeUp == 0 :
             self.m_awake = True
             self._log.write(LogLevel.Detail, self._node, "WakeUp cycle, node is always wake up.")
-        else : 
+        else :
             self._log.write(LogLevel.Detail, self._node, "Start WakeUp cycle every {0}s, during {1}s from last message.".format(self.timeoutWakeUp, self.WakeupDuration))
             self._running = True
-            self._lastTime = time.time()        
+            self._lastTime = time.time()
             while not self._stop.isSet() and self._running:
                 t = time.time()
                 if t  >= self._lastTime + self.timeoutWakeUp :
@@ -206,8 +206,8 @@ class WakeUp(CommandClass):
                         self.m_awake = True
                         self._log.write(LogLevel.Debug, self._node, "Wake up for {0}s".format(self.WakeupDuration))
                         self.SendWakeUp()
-                elif self.m_awake and (t > self._lastTime + self.WakeupDuration) : 
+                elif self.m_awake and (t > self._lastTime + self.WakeupDuration) :
                     self.m_awake = False
                     self._log.write(LogLevel.Debug, self._node, "Start sleeping for {0}s.".format(self.timeoutWakeUp))
-                self._stop.wait(0.1)
+                time.sleep(0.1)
         self._log.write(LogLevel.Detail, self._node, "Stop WakeUp cycle.")

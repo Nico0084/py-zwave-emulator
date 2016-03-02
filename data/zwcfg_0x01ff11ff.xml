@@ -183,18 +183,14 @@
 				</Value>
 			</CommandClass>
 			<CommandClass id="113" name="COMMAND_CLASS_ALARM" version="1">
-				<Instance index="1" />
-				<Instance index="2" />
-				<Value type="byte" genre="user" instance="1" index="0" label="Power Applied" units="" read_only="true" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="255" value="2">
-					<Help>Once the power has been applied, Alarm Report Command will be sent to Nodes in Grouping 1 to confirm the power applied status for HSM02.</Help>
+				<Value type="byte" genre="user" instance="1" index="0" label="Alarm Type" units="" read_only="true" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="255" value="1">
 				</Value>
-				<Value type="byte" genre="user" instance="1" index="1" label="low battery" units="" read_only="true" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="255" value="255">
-					<Help>When HSM02 automatically wakes up, it will check the battery usage. When low battery is detected, Alarm Report Command will be sent to Nodes in Grouping 1, afterward, LED will light up for 1 sec to remind user when HSM02 is triggered due to open or close incidents.</Help>
+				<Value type="list" genre="user" instance="1" index="1" label="Alarm report" units="" read_only="true" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="255" vindex="0" size="1">
+					<Item label="No alarm" value="0" />
+					<Item label="Power applied" value="2" />
+					<Item label="Tamper event" value="17" />
+					<Item label="Low battery" value="255" />
 				</Value>
-				<Value type="byte" genre="user" instance="2" index="0" label="Tamper event" units="" read_only="true" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="255" value="17">
-					<Help>Grouping 1, afterward, LED will light up for 1 sec to remind user when HSM02 is triggered due to open or close incidents.</Help>
-				</Value>
-				<Value type="byte" genre="user" instance="2" index="1" label="Alarm Level" units="" read_only="true" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="255" value="0" />
 			</CommandClass>
 			<CommandClass id="114" name="COMMAND_CLASS_MANUFACTURER_SPECIFIC" version="1" request_flags="4">
 				<Instance index="1" />
@@ -400,7 +396,6 @@
 				<Value type="decimal" genre="user" instance="1" index="2" label="General" units="" read_only="true" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" value="5" />
 				<Value type="decimal" genre="user" instance="2" index="3" label="Luminance" units="%" read_only="true" write_only="false" verify_changes="false" poll_intensity="1" min="0" max="0" value="7" />
 				<Value type="decimal" genre="user" instance="3" index="1" label="Temperature" units="F" read_only="true" write_only="false" verify_changes="false" poll_intensity="1" min="0" max="0" value="71.9" />
-				<Value type="decimal" genre="user" instance="3" index="3" label="Luminance" units="%" read_only="true" write_only="false" verify_changes="false" poll_intensity="0" min="0" max="0" value="31" />
 			</CommandClass>
 			<CommandClass id="96" name="COMMAND_CLASS_MULTI_INSTANCE/CHANNEL" version="2" request_flags="1" mapping="endpoints">
 				<Instance index="1" />

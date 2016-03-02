@@ -254,7 +254,7 @@ class CommandClass:
         print '    - Wait for {0} HandleMsg : {1}, {2}'.format(self.GetCommandClassName, GetDataAsHex(_data),  params)
         if 'wait' in params: waitTime += params['wait']
         while time.time() < waitTime and not self._stop.isSet():
-            self._stop.wait(0.01)
+            time.sleep(0.05)
         if not self._node.IsListeningDevice:
             wakeUp = self._node.GetCommandClass(self._node._manager.GetCommandClassId('COMMAND_CLASS_WAKE_UP'))
             if wakeUp is not None and wakeUp.IsAwake :
@@ -285,6 +285,7 @@ class CommandClass:
                 msg.Append(0x00) # TODO: don't known signification
             else :
                 msg.Append(len(msgData))
+            print (u"Add msgData {0}".format(msgData))
             for v in msgData : msg.Append(v)
             driver = self.GetDriver
             if driver is not None : driver.SendMsg(msg, queue)
@@ -303,7 +304,7 @@ class CommandClass:
         if value :
             self._log.write(LogLevel.Info, self, "Base commandClass object, polling {0} - {1}, instance {2}, value {3}.".format(self.GetCommandClassName, value.label,  poll['instance'], value.getVal()))
             value.setVal(value.getValueToPoll(poll['params']))
-            self.HandleReportChange("BaseCmd_Report", self, [self.getCmd,  value.index], value.instance, MsgQueue.Poll)
+            self.HandleReportChange("BaseCmd_Report", self, [self.getCmd, value.index], value.instance, MsgQueue.Poll)
         else : self._log.write(LogLevel.Warning, self, "Base commandClass object, Value not find, can't poll")
         return False
 

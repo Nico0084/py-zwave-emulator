@@ -13,20 +13,20 @@
         "rfchipversion" : [3, 1],
         "fakeneighbors" : {
             "1" : [7, 10, 13, 14, 20, 21],
-            "4" : [], 
-            "6" : [7, 10, 11, 13, 14], 
+            "4" : [],
+            "6" : [7, 10, 11, 13, 14],
             "7" : [1, 6, 8, 9, 11, 13, 18, 19, 20, 21],
-            "8" : [7], 
-            "9" : [], 
-            "10" : [1, 6, 11, 13, 14, 18, 19, 20, 21], 
-            "11" : [6, 7, 10, 13, 14, 18, 19], 
-            "13" : [1, 6, 7, 10, 11, 14, 18, 19], 
+            "8" : [7],
+            "9" : [],
+            "10" : [1, 6, 11, 13, 14, 18, 19, 20, 21],
+            "11" : [6, 7, 10, 13, 14, 18, 19],
+            "13" : [1, 6, 7, 10, 11, 14, 18, 19],
             "14" : [1, 6, 10, 11, 24, 18, 19],
-            "18" : [7, 10, 11, 22, 14], 
-            "19" : [], 
-            "20" : [1, 7, 10, 21], 
+            "18" : [7, 10, 11, 22, 14],
+            "19" : [],
+            "20" : [1, 7, 10, 21],
             "21" : [1, 7, 10, 20],
-            "22" : [7, 10, 11, 13, 23], 
+            "22" : [7, 10, 11, 13, 23],
             "23" : [6, 7, 10, 22, 14, 18, 19]
             }
         },
@@ -49,7 +49,7 @@
             "cmdclssextraparams" : {
                     "COMMAND_CLASS_SWITCH_MULTILEVEL" : {
                         "1" : {
-                            "switchtype1" : 1, 
+                            "switchtype1" : 1,
                             "switchtype2" : 2
                             }
                         }
@@ -59,8 +59,32 @@
             "comment" : "HSM02 - 1",
             "failed" : false,
             "timeoutwakeup" : 60,
-            "wakeupduration" : 5,
-            "pollingvalues" : [],
+            "wakeupduration" : 10,
+            "pollingvalues" : [{
+                        "cmdclass" : "COMMAND_CLASS_SENSOR_BINARY",
+                        "instance" : 1,
+						"label" : "Sensor",
+                        "timing" : 60,
+                        "params" : {
+                            "polltype": "serie",
+                            "mode" : "round",
+                            "values" : [true,false],
+                            "step" : 0
+                            },
+                        "unable" : true
+                    },{
+                        "cmdclass" : "COMMAND_CLASS_ALARM",
+                        "instance" : 1,
+						"label" : "Alarm report",
+                        "timing" : 45,
+                        "params" : {
+                            "polltype": "serie",
+                            "mode" : "round",
+                            "values" : [0,2, 17, 255],
+                            "step" : 0
+                            },
+                        "unable" : true
+                    }],
             "cmdclssextraparams" : {}
         },{
             "nodeid" : 7,
@@ -68,7 +92,7 @@
             "failed" : false,
             "timeoutwakeup" : 0,
             "wakeupduration" : 0,
-            "pollingvalues" : [ 
+            "pollingvalues" : [
                     {
                         "cmdclass" : "COMMAND_CLASS_METER",
                         "instance" : 1,
@@ -126,7 +150,7 @@
             "failed" : false,
             "timeoutwakeup" : 140,
             "wakeupduration" : 15,
-            "pollingvalues" : [ 
+            "pollingvalues" : [
                     {
                         "cmdclass" : "COMMAND_CLASS_SENSOR_MULTILEVEL",
                         "instance" : 1,
@@ -163,7 +187,7 @@
                             "step" : 0
                             },
                         "unable" : true
-                    }                    
+                    }
                 ],
             "cmdclssextraparams" : {}
         },{

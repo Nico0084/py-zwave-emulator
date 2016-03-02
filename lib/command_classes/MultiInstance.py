@@ -43,7 +43,7 @@ class MultiInstanceCmd(EnumNamed):
     Get		= 0x04
     Report	= 0x05
     Encap	= 0x06
-    
+
     # Version 2
     EndPointGet			= 0x07
     EndPointReport		= 0x08
@@ -57,7 +57,7 @@ class MultiInstanceMapping:
     MapAll = 0
     MapEndPoints = 1
     MapOther = 2
-    
+
 c_genericClass = [
     0x21,		# Multilevel Sensor
     0x20,		# Binary Sensor
@@ -94,13 +94,13 @@ c_genericClassName = [
 ]
 
 class MultiInstance(CommandClass):
-    
+
     StaticGetCommandClassId = 0x60
     StaticGetCommandClassName = "COMMAND_CLASS_MULTI_INSTANCE"
-    
+
     def __init__(self, node,  data):
         CommandClass.__init__(self, node, data)
-    
+
     GetCommandClassId = property(lambda self: self.StaticGetCommandClassId)
     GetCommandClassName = property(lambda self: self.StaticGetCommandClassName)
     reportCmd = property(lambda self: MultiInstanceCmd.Report)
@@ -111,7 +111,7 @@ class MultiInstance(CommandClass):
 
     def ProcessMsg(self, _data, instance=1, multiInstanceData = []):
         # Version 1  MULTI_INSTANCE
-        if _data[0] == MultiInstanceCmd.Get: 
+        if _data[0] == MultiInstanceCmd.Get:
             msg = Msg("MultiInstanceCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             clss = self._node.GetCommandClass(_data[1])
             if clss is not None :
@@ -125,7 +125,7 @@ class MultiInstance(CommandClass):
                 self.GetDriver.SendMsg(msg, MsgQueue.NoOp)
             else :
                 self._log.write(LogLevel.Error, self._node, "MultiInstance Version 1 commandClass 0x%.2x don't exist"%_data[1])
-            
+
         # Version 2 MULTI_CHANNEL
         elif _data[0] == MultiInstanceCmd.EndPointGet:
             msg = Msg( "MultiChannelCmd_EndPoint_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
@@ -165,27 +165,36 @@ class MultiInstance(CommandClass):
             self.GetDriver.SendMsg(msg, MsgQueue.NoOp)
         elif _data[0] == MultiInstanceCmd.EncapV2:
             endPoint = _data[2]
-            cmdClss = self._node.GetCommandClass(_data[3])
+            cmdClss = self._node.GetCommandClass(_data[2])
             if cmdClss is not None:
                 msg = Msg( "MultiChannelCmd_EncapV2_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
                 msgHeader = [TRANSMIT_COMPLETE_OK]
                 msgHeader.append(self.nodeId)
                 instance = self._node.getInstanceFromEndpoint(_data[3], endPoint)
                 if instance :
-                    self._log.write(LogLevel.Detail, self._node, "     MultiChannelCmd_EncapV2, Call {0}, instance :{1}".format(cmdClss.GetCommandClassName,  instance))
+                    self._log.write(LogLevel.Detail, self._node, "     MultiChannelCmd_EncapV2, Call {0}, instance :{1}".format(cmdClss.GetCommandClassName, instance))
                     msgHeader.append(4)# + len(msgData))
                     msgHeader.append(self.GetCommandClassId)
                     msgHeader.append(MultiInstanceCmd.EncapV2)
                     msgHeader.append(endPoint)
                     msgHeader.append(0x01) # TODO: don't known signification
                     cmdClss.ProcessMsg(_data[4:], instance, msgHeader)
-                    
-#                    msg.Append(cmdClss.GetCommandClassId)
-#                    msg.Append(FUNC_ID_APPLICATION_COMMAND_HANDLER)
-#                    msg.Append(cmdClss.getByteIndex(instance))
-#                    msg.Append(0x05) # TODO: don't known signification
-#                    for v in msgData : msg.Append(v)
-#                    self.GetDriver.SendMsg(msg, MsgQueue.NoOp)
+        elif _data[0] == MultiInstanceCmd.Encap:
+            endPoint = _data[1]
+            cmdClss = self._node.GetCommandClass(_data[2])
+            if cmdClss is not None:
+                msg = Msg( "MultiChannelCmd_Encap_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
+                msgHeader = [TRANSMIT_COMPLETE_OK]
+                msgHeader.append(self.nodeId)
+                instance = self._node.getInstanceFromEndpoint(_data[2], endPoint)
+                if instance :
+                    self._log.write(LogLevel.Detail, self._node, "     MultiChannelCmd_Encap, Call {0}, instance :{1}".format(cmdClss.GetCommandClassName, instance))
+                    msgHeader.append(3)# + len(msgData))
+                    msgHeader.append(instance)
+                    msgHeader.append(self.GetCommandClassId)
+                    msgHeader.append(MultiInstanceCmd.Encap)
+                    cmdClss.ProcessMsg(_data[3:], instance, msgHeader)
+
         else :
             self._log.write(LogLevel.Warning, self, "CommandClass REQUEST {0}, Not implemented : {1}".format(self.getFullNameCmd(_data[0]), GetDataAsHex(_data)))
-            
+

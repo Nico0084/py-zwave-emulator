@@ -44,41 +44,53 @@ class SensorBinaryCmd(EnumNamed):
 	Report		= 0x03
 
 class SensorBinary(CommandClass):
-    
+
     StaticGetCommandClassId = 0x30
     StaticGetCommandClassName = "COMMAND_CLASS_SENSOR_BINARY"
-    
+
     def __init__(self, node,  data):
         CommandClass.__init__(self, node, data)
         if 'sensorMaps' in data : self.sensorMaps = data['sensorMaps']
         else : self.sensorMaps = []
         self._log.write(LogLevel.Detail, self, "SensorMaps = {0}, With DATA : {1}".format(self.sensorMaps, data))
-    
+
     GetCommandClassId = property(lambda self: self.StaticGetCommandClassId)
     GetCommandClassName = property(lambda self: self.StaticGetCommandClassName)
-    
+    getCmd = property(lambda self: SensorBinaryCmd.Get)
+
     def getFullNameCmd(self,  _id):
         return SensorBinaryCmd().getFullName(_id)
-        
+
     def getByteIndex(self,  type):
         if self.sensorMaps :
             for map in self.sensorMaps:
                 if map['type'] == type : return map['index']
         return 0
-        
+
     def getByteType(self,  index):
         if self.sensorMaps :
             for map in self.sensorMaps:
                 if map['index'] == index : return map['type']
         return 0
-        
-    def getActiveIndex(self):    
+
+    def getActiveIndex(self):
         if self.sensorMaps : return self.sensorMaps[0]['index']
         else: return 0
-    
+
+    def getDataMsg(self, _data, instance=1):
+        self._log.write(LogLevel.Detail, self, " getDataMsg : {0} of instance {1}".format(GetDataAsHex(_data), instance))
+        msgData = []
+        if _data[0] == SensorBinaryCmd.Get:
+            value = self._node.getValue(self.GetCommandClassId, instance, 0) #  index is allways 0
+            if value is not None :
+                msgData.append(self.GetCommandClassId)
+                msgData.append(SensorBinaryCmd.Report)
+                msgData.append(value.getValueByte())
+        return msgData
+
     def ProcessMsg(self, _data, instance=1, multiInstanceData = []):
         print '++++++++++++++++ SensorBinary ProcessMsg +++++++++++++++'
-        if _data[0] == SensorBinaryCmd.Get: 
+        if _data[0] == SensorBinaryCmd.Get:
             msg = Msg("SensorBinaryCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
             index = self.getActiveIndex()
             vData = self._node.getValue(self.GetCommandClassId, instance, index)
@@ -90,7 +102,7 @@ class SensorBinary(CommandClass):
             msg.Append(SensorBinaryCmd.Report)
             msg.Append(vData.getValueByte())
             if self.sensorMaps : msg.Append(self.getByteType(index))
-            self.GetDriver.SendMsg(msg, MsgQueue.NoOp)    
+            self.GetDriver.SendMsg(msg, MsgQueue.NoOp)
         else:
             self._log.write(LogLevel.Warning, self, "CommandClass REQUEST {0}, Not implemented : {1}".format(self.getFullNameCmd(_data[0]), GetDataAsHex(_data)))
 

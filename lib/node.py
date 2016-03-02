@@ -121,13 +121,13 @@ class Node:
         self.neighbors = self._manager.getFakeNeighbors(self.homeId, self.nodeId) # FAKENEIGHBORS[self.nodeId]
         self.emulData = self._manager.getEmulNodeData(self.homeId, self.nodeId)
         self._runningPoll = False
-        
+
         self.numEndPoints = 0
         self.numEndPointsCanChange = False
         self.endPointsAreSameClass = False
         self.mapEndPoints = OrderedDict()
         self.failNodeInfo = 0
-        
+
         self.currentCommand = 0
         self.currentCommandState = 0
 
@@ -140,7 +140,7 @@ class Node:
     _log = property(lambda self: self._manager._log)
     _stop = property(lambda self: self._manager._stop)
     nodeRef = property(lambda self: "{0}.{1}".format(GetDataAsHex(self.homeId, 8), self.nodeId))
-    commandClassId  = property(lambda self: 0x00) # 'COMMAND_CLASS_NO_OPERATION' 
+    commandClassId  = property(lambda self: 0x00) # 'COMMAND_CLASS_NO_OPERATION'
     instance = property(lambda self: 0)
     index = property(lambda self: 0)
     genre = property(lambda self: 0)
@@ -153,7 +153,7 @@ class Node:
     GetManufacturerId = property(lambda self: GetDataAsHex([self.manufacturer['id']], 4) if 'id' in self.manufacturer else "0x0000")
     GetProductType = property(lambda self: GetDataAsHex([self.product['type']] , 4) if'type' in self.product else "0x0000")
     GetProductId = property(lambda self: GetDataAsHex([self.product['id']], 4) if 'id' in self.product else "0x0000")
-    
+
     GetManufacturerName = property(lambda self: self.manufacturer['name'] if 'name' in self.manufacturer else "")
     GetProductName = property(lambda self: self.product['name'] if 'name' in self.product else "")
 
@@ -161,7 +161,7 @@ class Node:
     IsAddingNode = property(lambda self: self.m_addingNode)
     IsInclude = property(lambda self: True if self.homeId != 0 else False)
     IsFailed = property(lambda self: self.emulData['failed'])
-    
+
     def IsController(self):
         return (self.basic == 0x01 or self.basic == 0x02 ) and ( self.generic == 0x01 or self.generic == 0x02 )
 
@@ -185,7 +185,7 @@ class Node:
         else:
             self._log.write(LogLevel.Warning, self,"Node is not a listening device and don't have WakeUp command Class. It's staying on sleeping state.")
             return False
-            
+
     def GetCapabilities(self):
         lCaps = []
         if self.frequentListening : lCaps.append("FLiRS")
@@ -194,7 +194,7 @@ class Node:
         if self.routing : lCaps.append("Routing")
         if self.security: lCaps.append("Security")
         return ', '.join(lCaps)
-        
+
     def setData(self, data):
 #        self._log.write(LogLevel.Info, self, "Xml DATA : {0}".format(data))
         for clssData in data['cmdsClass']:
@@ -232,20 +232,20 @@ class Node:
         if status == "failed" : self.emulData['failed'] = True
         elif status == "alive" : self.emulData['failed'] = False
         self._log.write(LogLevel.Info, self, "Now marked as {0}".format('failed' if self.emulData['failed'] else 'alive'))
-        
+
     def SetManufacturerName(self, name):
         self.manufacturer['name'] = name
-    
+
     def SetProductName(self, name):
         self.product['name'] = name
-    
+
     def SetNodeName(self, name):
         self.name = name
         cc = self.GetCommandClass(self._manager.GetCommandClassId('COMMAND_CLASS_NODE_NAMING'))
         if cc :
             # The node supports naming, so we try to write the name into the device
             cc.SetName(name)
-        
+
     def SetLocation(self, name):
         self.location = name
         cc = self.GetCommandClass(self._manager.GetCommandClassId('COMMAND_CLASS_NODE_NAMING'))
@@ -255,15 +255,15 @@ class Node:
 
     def SetManufacturerId(self, _manufacturerId):
         self.manufacturer['id']= _manufacturerId
-        
+
     def SetProductType(self, _productType):
         self.product['type'] = _productType
-        
+
     def SetProductId(self, _productId):
         self.product['id'] = _productId
 
     def addCmdClss(self, clssData, ozwAdded = False):
-        for clss in self._cmdsClass: 
+        for clss in self._cmdsClass:
             if clssData['id'] == clss.id : return
         item = {}
         for k in clssData.keys():
@@ -284,13 +284,13 @@ class Node:
                                     self._log.write(LogLevel.Warning, self, "Error on loading extra parameters for {0} instance {1} : {2}".format(newCmdClss.GetCommandClassName, instance, self.emulData["cmdclssextraparams"][cmdClss][instance]))
                         else :
                             self._log.write(LogLevel.Warning, self, "Config emul file set extra parameters for {0}, but extra params not defined for that cmdclss".format(newCmdClss.GetCommandClassName))
-        else : 
+        else :
             print "Error, can't create command class {0}, Not registered.".format(clssData)
 
     def addValue(self, commandClassId,  data):
         value = Value(self, commandClassId, data)
         if value : self._values.append(value)
-    
+
     def getCmdClass(self, commandClassId):
         for clss in self._cmdsClass :
             if clss.id== commandClassId :
@@ -308,7 +308,7 @@ class Node:
         self.numEndPoints = 0
         for clssData in data['cmdsClass']:
             for instance in clssData["instances"]:
-                if 'endpoint' in instance : 
+                if 'endpoint' in instance :
                     if instance['index'] not in endpoints :
                         self.numEndPoints += 1
                         endpoints[instance['index']] = {instance['endpoint']:[]}
@@ -319,13 +319,13 @@ class Node:
         for i1 in endpoints:
             for i2 in endpoints:
                 for e in endpoints[i2]:
-                    if endpoints[i2][e] != endpoints[i2][e] : 
+                    if endpoints[i2][e] != endpoints[i2][e] :
                         self.endPointsAreSameClass = False
                 if len(endpoints[i1]) != len(endpoints[i2]) :
                     self.numEndPointsCanChange = True
         self.mapEndPoints = OrderedDict(sorted(endpoints.items(), key=lambda t: t[0]))
         print "numEndPointsCanChange : {0} , endPointsAreSameClass {1}".format(self.numEndPointsCanChange, self.endPointsAreSameClass)
-        
+
     def setInstanceIndex(self, old, new):
         if old == new : return True,  ""
         if new not in self.mapEndPoints:
@@ -336,7 +336,7 @@ class Node:
                     self.mapEndPoints = OrderedDict(sorted(self.mapEndPoints.items(), key=lambda t: t[0]))
                     return True,  ""
         return False,  "Index {0} allready exist, no duplicate index.".format(new)
-            
+
     def setInstanceEndPoint(self, index, new):
         for i, ep in self.mapEndPoints.iteritems():
             if i == index :
@@ -358,7 +358,7 @@ class Node:
             if i == index :
                 print "Instance ",  i, "enPoint ",  ep,  "new",  new
                 for endP in ep :  # Only one endPoint
-                    if endP == endPoint : 
+                    if endP == endPoint :
                         self.mapEndPoints[i][endPoint] = new
                         return True,  ""
                 return False,  "In Instance Index {0}, EndPoint {1} doesn't exist...".format(index, endPoint)
@@ -376,29 +376,29 @@ class Node:
         cmdClss =[]
         for i in self.mapEndPoints:
             for eP in self.mapEndPoints[i]:
-                if eP == endpoint : 
+                if eP == endpoint :
                     for clss in self.mapEndPoints[i][eP] :
                         if clss not in cmdClss : cmdClss.append(clss)
         return cmdClss
-        
+
     def getInstanceFromEndpoint(self, clssId, endpoint):
         for instance in self.mapEndPoints:
             for eP in self.mapEndPoints[instance]:
-                if eP == endpoint : 
+                if eP == endpoint :
                     if clssId in self.mapEndPoints[instance][eP] : return instance
         return 0
-        
+
     def getEndpointFromInstance(self, clssId, instance):
         if instance in self.mapEndPoints:
             for eP in self.mapEndPoints[instance]:
                 if clssId in self.mapEndPoints[instance][eP] : return eP
         return 0
-        
+
     def GetClassIdInformation(self, commandClassId):
         for clss in self._cmdsClass :
             if commandClassId == clss.id:
                 return {'name' : clss.name ,  'version': clss.m_version,  'id': clss.id}
-                
+
     def hasBasicClass(self):
         for clss in self._cmdsClass:
             if clss.id == 32: #  COMMAND_CLASS_BASIC
@@ -422,13 +422,13 @@ class Node:
         mClass = []
         afterMark  = False
         for clssId in addClass:
-            if clssId == '0xef': 
+            if clssId == '0xef':
                 afterMark = True
                 continue
             if self._manager.IsSupportedCommandClasses(int(clssId,  16)):
                 if (int(clssId,  16) > 5) and (int(clssId, 16) < 0xef) :
-                    # if AddCommandClass(clss) : # TODO: c'est ici que la lib C++ ajout la command class au node, nous elle l'est déjà 
-                    clssRef = self.GetCommandClass((int(clssId, 16))) 
+                    # if AddCommandClass(clss) : # TODO: c'est ici que la lib C++ ajout la command class au node, nous elle l'est déjà
+                    clssRef = self.GetCommandClass((int(clssId, 16)))
                     if clssRef :
                         clssRef.mandatory = True
                         if afterMark and clssId not in mClass :
@@ -449,12 +449,12 @@ class Node:
         print "************* node {0} hasOptionalFunctionality : {1}".format(self.nodeId,  True if cpt else False)
         print self._mandatoryClasses
         return True if cpt else False
-        
+
     def getValue(self, commandClassId, instance, index):
         for v in self._values :
             if v._commandClassId == commandClassId and v._index == index and v._instance == instance: return v
         return None
-        
+
     def getValueByLabel(self, commandClassId, instance, label):
         for v in self._values :
             if v._commandClassId == commandClassId and v._label == label and v._instance == instance: return v
@@ -467,14 +467,14 @@ class Node:
                print 'find'
                return v
         return None
-        
+
     def getCmdClassValues(self, commandClassId):
         listValues = []
         for v in self._values :
             if v._commandClassId == commandClassId :
                 listValues.append(v)
         return listValues
-        
+
     def getCmdClassInstanceValues(self, commandClassId, instance):
         listValues = []
         for v in self._values :
@@ -502,7 +502,7 @@ class Node:
         msg = Msg( "NoOperation_Set", self.nodeId,  RESPONSE, FUNC_ID_ZW_GET_NODE_PROTOCOL_INFO)
         d = 0x80 if self.listening else 0
         if self.routing : d |= 0x40
-        if self.max_baud_rate == 40000 : d |= 0x12 #   mask for (_data[0] & 0x38 ) == 0x10 
+        if self.max_baud_rate == 40000 : d |= 0x12 #   mask for (_data[0] & 0x38 ) == 0x10
         d |= self.version -1
         msg.Append(d)
         d = SecurityFlag.Sensor250ms if self.frequentListening  else 0 # TODO: We can known witch is capabilities between SecurityFlag.Sensor250ms and SecurityFlag.Sensor1000ms ?
@@ -519,7 +519,7 @@ class Node:
         msg.Append(self.specific)
 #        msg.Append(self.nodeId)
         return msg
-        
+
     def SetDeviceClasses(self):
         basic = self._manager._DeviceClass.getBasic(self.basic)
         self._log.write(LogLevel.Info, self, "  Basic device class    ({0}) - {1}".format(basic['key'], basic['label']))
@@ -569,15 +569,15 @@ class Node:
             self.UpdateNodeInfo()
 
     def SetMapping(self, basicMapping):
-        if basicMapping is None : 
+        if basicMapping is None :
             self._mapping = None
             self._log.write(LogLevel.Info, self, "    COMMAND_CLASS_BASIC is not mapped")
             return False
-        else : 
+        else :
             mapped = self.GetClassIdInformation(basicMapping)
             for clss in self._cmdsClass:
                 if clss.id == 32: #  COMMAND_CLASS_BASIC
-                    if clss.ignoremapping : 
+                    if clss.ignoremapping :
                         self._mapping = None
                         self._log.write(LogLevel.Info, self, "    COMMAND_CLASS_BASIC will not be mapped to {0}(ignored)".format(mapped['name']))
                         return True
@@ -629,7 +629,7 @@ class Node:
 #	if( WakeUp* wakeUp = static_cast<WakeUp*>( GetCommandClass( WakeUp::StaticGetCommandClassId() ) ) )
 #	{
 #		wakeUp->SetAwake( true );
-#	}        
+#	}
 
     def GetDeviceClasses(self):
         basic = self._manager._DeviceClass.getBasic(self.basic)
@@ -648,17 +648,17 @@ class Node:
 
     def SetAddingNode(self):
        self.m_addingNode = True
-       
+
     def ClearAddingNode(self):
        self.m_addingNode = False
-       
+
     def Reset(self):
         self.name = ""
         self.location = ""
         self.neighbors = []
         clssAssoc = self.getCmdClassByName("COMMAND_CLASS_ASSOCIATION")
-        if clssAssoc is not None : clssAssoc.Reset() 
-       
+        if clssAssoc is not None : clssAssoc.Reset()
+
     def HandleMsgSendDataResponse(self, _data):
         if self.registeredCallbackId == 0:
             self.registeredClassId = _data[4]
@@ -671,7 +671,7 @@ class Node:
             msg = Msg( "Request with callback ID 0x{0:02x} for ZW_SEND_DATA".format(self.registeredCallbackId), self.nodeId,  REQUEST, FUNC_ID_ZW_SEND_DATA)
             msg.Append(self.registeredCallbackId)
             msg.SetExpectedCallBack(_data[-2])
-            if self.IsFailed or not self.IsAwake(): 
+            if self.IsFailed or not self.IsAwake():
                 msg.Append(TRANSMIT_COMPLETE_NO_ACK) #  0x01
                 self.GetDriver.SendMsg(msg, MsgQueue.NoOp)
             else :
@@ -684,7 +684,7 @@ class Node:
 #        FUNC_ID_ZW_SEND_DATA
 #        FUNC_ID_SERIAL_API_GET_INIT_DATA
 #        FUNC_ID_SERIAL_API_APPL_NODE_INFORMATION
-    
+
     def handleApplicationCommandHandler(self, _data):
         if self.registeredClassId != 0x00:
             clss = self.GetCommandClass(self.registeredClassId)
@@ -693,19 +693,19 @@ class Node:
                 handler.start()
             else :
                 self._log.write(LogLevel.Warning, self,"CommandClass 0x%0.2x not registered."%self.registeredClassId)
-            
+
     def getMsgNodeInfo(self):
         if self.IsController() and self.failNodeInfo < 1 :
             msg = Msg("Simulate Fail node info", self.nodeId,  REQUEST, FUNC_ID_ZW_APPLICATION_UPDATE)
-            msg.Append(UPDATE_STATE_NODE_INFO_REQ_FAILED)          
+            msg.Append(UPDATE_STATE_NODE_INFO_REQ_FAILED)
             msg.Append(0)
             msg.Append(0)
             self.failNodeInfo += 1
-            return msg 
-        else : 
+            return msg
+        else :
             self.failNodeInfo = 0
             return self.getMsgNodeInfoClass()
-       
+
     def getMsgRoutingInfo(self,  _data):
         msg = Msg("Routing info Response", self.nodeId,  RESPONSE, FUNC_ID_ZW_GET_ROUTING_INFO)
         tab = []
@@ -742,7 +742,7 @@ class Node:
 #        msg.Append(self.specific)
         for c in self.getNodeInfoClass(): msg.Append(c)
         return msg
-        
+
     def getNodeInfoClass(self):
         clssList = []
         afterM = []
@@ -762,22 +762,22 @@ class Node:
         fullList.append(self.specific)
         for c in clssList: fullList.append(c)
         return fullList
-        
+
     def getMsgNodeNeighborUpdate(self, callbackId):
 #        REQUEST_NEIGHBOR_UPDATE_STARTED	=	0x21
 #        REQUEST_NEIGHBOR_UPDATE_DONE	    =	0x22
 #        REQUEST_NEIGHBOR_UPDATE_FAILED	=	0x23
         msg = Msg( "Neighbor update status", self.nodeId,  REQUEST, FUNC_ID_ZW_REQUEST_NODE_NEIGHBOR_UPDATE_OPTIONS)
         msg.Append(callbackId)
-        if self.currentCommand == 0 : 
+        if self.currentCommand == 0 :
             self.currentCommand = FUNC_ID_ZW_REQUEST_NODE_NEIGHBOR_UPDATE_OPTIONS
             self.currentCommandState = REQUEST_NEIGHBOR_UPDATE_STARTED
             msg.Append(REQUEST_NEIGHBOR_UPDATE_STARTED)
             threading.Thread(None, self.emulCycleCmd, "th_handleEmulCycleCmd_node_{0}.".format(self.nodeId), (), {'listState': [REQUEST_NEIGHBOR_UPDATE_DONE],
                                         'timings': [2.0],
-                                        'callback': self.getMsgNodeNeighborUpdate, 
-                                        'callbackId': callbackId, 
-                                        'queues' : [MsgQueue.Command], 
+                                        'callback': self.getMsgNodeNeighborUpdate,
+                                        'callbackId': callbackId,
+                                        'queues' : [MsgQueue.Command],
                                         'firstNext':  [True]
                                     }).start()
         elif self.currentCommand == FUNC_ID_ZW_REQUEST_NODE_NEIGHBOR_UPDATE_OPTIONS:
@@ -786,7 +786,7 @@ class Node:
                 self.currentCommand = 0
                 self.currentCommandState = 0
         return msg
-    
+
     def startPoll(self):
         if not self._runningPoll:
             if len(self.emulData['pollingvalues']) != 0:
@@ -795,7 +795,7 @@ class Node:
                 self._runningPoll = False
                 self._log.write(LogLevel.Detail, self, "No polling value for this node.")
         else :
-            self._log.write(LogLevel.Detail, self, "Polling value allready started for this node.")            
+            self._log.write(LogLevel.Detail, self, "Polling value allready started for this node.")
 
     def handlePollCycle(self):
         self._log.write(LogLevel.Detail, self, "Start polling value(s) cycle for emulation :")
@@ -818,7 +818,7 @@ class Node:
                             if cmdClass : cmdClass.pollValue(poll)
                             else : self._log.write(LogLevel.Warning, self, "Error in Config emulation JSON file. CommandClass don't exist : {0}".format(poll))
                     else : self._log.write(LogLevel.Debug, self, "Node marked as Fail, no polling value.")
-            self._stop.wait(0.1)
+            time.sleep(0.1)
         self._log.write(LogLevel.Detail, self, "Stop polling value cycle.")
 
     def getPoll(self, id):
@@ -833,14 +833,14 @@ class Node:
     def setPollParam(self, id, param, value):
         for poll in self.emulData['pollingvalues']:
             if poll['id'] == id :
-                if param in poll : 
+                if param in poll :
                     print poll
                     poll[param] = value
                     self._log.write(LogLevel.Detail, self, "Set poll {0}, param {1}, {2}".format(id, param, poll))
                     return True
                 else : return False
         return False
-        
+
     def updatePollParam(self, id, params):
         for poll in self.emulData['pollingvalues']:
             if poll['id'] == id :
@@ -848,7 +848,7 @@ class Node:
                 self._log.write(LogLevel.Detail, self, "poll {0}, updated {1}".format(id, params))
                 return True
         return False
-    
+
     def deletePoll(self, id):
         for poll in self.emulData['pollingvalues']:
             if poll['id'] == id :
@@ -856,7 +856,7 @@ class Node:
                 if not self.emulData['pollingvalues']: self._runningPoll = False
                 return True
         return False
-        
+
     def addPollValue(self, pollAdd):
         find = False
         id = []
@@ -868,8 +868,8 @@ class Node:
         if not find :
             nb = 1
             free = False
-            while not free : 
-                if nb in id : 
+            while not free :
+                if nb in id :
                     nb += 1
                 else: free = True
             pollAdd['id'] = nb
@@ -881,7 +881,7 @@ class Node:
             return "",  ""
         else:
             return "error", "Polled value allready exist, can't be create."
-            
+
     def emulCycleCmd(self, listState = [], timings = [], callback = None, callbackId = None, queues = [], firstNext = []):
         self._log.write(LogLevel.Detail, self, "Start command emulation :{0} ({1})".format(getFuncName(self.currentCommand), GetDataAsHex([self.currentCommand])))
         i = 0

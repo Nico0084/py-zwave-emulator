@@ -39,18 +39,18 @@ import sys
 sys.path.insert(0,'../..')
 
 from threading import Thread
-from zwemulator.lib.manager import OPTIONS,  Manager 
+from zwemulator.lib.manager import OPTIONS,  Manager
 from zwemulator.wui.zwemulatorwui import app
 from zwemulator.lib.defs import readJsonFile
+import time
 
 from flask import request
- 
 
 def joinwui(*_data, **params):
     stop = params['manager']._stop
     while not stop.isSet():
-        stop.wait(0.1)
-    shutdown_server()    
+        time.sleep(0.1)
+    shutdown_server()
 
 def shutdown_server():
     try :

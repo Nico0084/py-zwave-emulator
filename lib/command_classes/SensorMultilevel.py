@@ -154,13 +154,13 @@ c_moistureUnits = [
     ]
 
 class SensorMultilevel(CommandClass):
-    
+
     StaticGetCommandClassId = 0x31
     StaticGetCommandClassName = "COMMAND_CLASS_SENSOR_MULTILEVEL"
-    
+
     def __init__(self, node,  data):
         CommandClass.__init__(self, node, data)
-    
+
     GetCommandClassId = property(lambda self: self.StaticGetCommandClassId)
     GetCommandClassName = property(lambda self: self.StaticGetCommandClassName)
 
@@ -173,7 +173,7 @@ class SensorMultilevel(CommandClass):
             val = self._node.getValue(self.GetCommandClassId,  instance, index)
             if val is not None : return index
         return 0
-    
+
     def getDataMsg(self, _data, instance=1):
         msgData = []
         if _data :
@@ -189,8 +189,8 @@ class SensorMultilevel(CommandClass):
                     msgData.extend(self.EncodeValue(value._value, 0))
         else :
             self._log.write(LogLevel.Warning, self, "REQUEST SensorMultilevelCmd getDataMsg, No data in buffer")
-        return msgData       
-                
+        return msgData
+
     def ProcessMsg(self, _data, instance=1, multiInstanceData = []):
         if _data[0] == SensorMultilevelCmd.SupportedGet:
 #            group = self.getGroup(_data[1])
@@ -202,13 +202,13 @@ class SensorMultilevel(CommandClass):
 #                msg.Append(self.GetCommandClassId)
 #                msg.Append(SensorMultilevelCmd.SupportedReport)
 #
-#                self.GetDriver.SendMsg(msg, MsgQueue.NoOp)    
+#                self.GetDriver.SendMsg(msg, MsgQueue.NoOp)
             self._log.write(LogLevel.Warning, self, "REQUEST SensorMultilevelCmd.SupportedGet Not implemented : {0}".format(GetDataAsHex(_data)))
         elif _data[0] == SensorMultilevelCmd.Get:
             value = self._node.getValue(self.GetCommandClassId, instance, self.getByteIndex(instance))
             if value is not None :
                 msg = Msg("SensorMultilevelCmd_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
-                msgData = self.getDataMsg(_data,  instance)
+                msgData = self.getDataMsg(_data, instance)
                 if multiInstanceData :
                     multiInstanceData[2] += len(msgData)
                     for v in multiInstanceData : msg.Append(v)
