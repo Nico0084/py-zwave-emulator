@@ -474,7 +474,7 @@ class DeviceClasses:
 #        import pprint
 
         """Read XML device_classes.xml of open-zwave C++ lib"""
-        self.xml_file = path + "\device_classes.xml"
+        self.xml_file = path + "/device_classes.xml"
 
         self.xml_content = minidom.parse(self.xml_file)
         # read xml file
