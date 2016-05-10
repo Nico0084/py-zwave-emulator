@@ -53,7 +53,7 @@ class OZWSerialEmul:
         self._cbTimeOut = cbTimeOut
         self._lockWrite = threading.Lock()  # use to lock write data on serial when waiting for an ACK
         self._log.write(LogLevel.Info, "  Opening emulate controller {0}".format(port))
-        self._serial = serial.Serial(port,  baud, timeout = timeout)
+        self._serial = serial.Serial(port,  baud, timeout = timeout, rtscts=True, dsrdtr=True)
         self._readMsg = threading.Thread(None, self.waitData, "th_Handle_Read_Msg", (), {})
         self._readMsg.start()
         
