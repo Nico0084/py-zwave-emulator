@@ -114,8 +114,8 @@ class Alarm(CommandClass):
             msg.Append(TRANSMIT_COMPLETE_OK)
             msg.Append(self.nodeId)
             msg.Append(4)
-            if  len(_data) >= 5 and _data[1] == 0x00 : # Version 2
-                data = self.getDataMsg([AlarmCmd.Get, _data[2]], instance)
+#            if  len(_data) >= 5 and _data[1] == 0x00 : # Version 2
+            data = self.getDataMsg([AlarmCmd.Get, _data[2]], instance)
             msg.Append(len(data))
             for d in data : msg.Append(d)
             self.GetDriver.SendMsg(msg, MsgQueue.NoOp)
