@@ -78,7 +78,7 @@ class MultiInstanceAssociation(CommandClass):
                         nodes.append(n)
                         size += 1
                     else :
-                        nodes.append(n)
+                        nodes_i.append(n)
                         size += 2
                 if nodes_i : size += 1 # add multi-instance marker place
                 msg.Append(size + 5)
