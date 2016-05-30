@@ -34,9 +34,9 @@ along with py-zwave-emulator. If not, see http:#www.gnu.org/licenses.
 
 """
 
-from zwemulator.lib.defs import *
-from zwemulator.lib.log import LogLevel
-from zwemulator.lib.driver import MsgQueue, Msg
+from lib.defs import *
+from lib.log import LogLevel
+from lib.driver import MsgQueue, Msg
 import time
 import locale
 

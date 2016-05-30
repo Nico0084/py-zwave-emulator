@@ -39,11 +39,11 @@ along with py-zwave-emulator. If not, see http:#www.gnu.org/licenses.
 #from libcpp.vector import vector
 
 #def extern from "Node.h" namespace "OpenZWave::Node":
-from zwemulator.lib.defs import *
-from zwemulator.lib.values import *
-from zwemulator.lib.log import LogLevel
-from zwemulator.lib.driver import MsgQueue, Msg
-from zwemulator.lib.command_classes.commandclass import CommandClass
+from lib.defs import *
+from lib.values import *
+from lib.log import LogLevel
+from lib.driver import MsgQueue, Msg
+from lib.command_classes.commandclass import CommandClass
 import threading
 import time
 from collections import OrderedDict

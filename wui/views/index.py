@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-     
-from zwemulator.wui.zwemulatorwui import app
+from wui.zwemulatorwui import app
 from flask import render_template
 from flask_login import login_required
 
-from zwemulator.lib.manager import Manager
+from lib.manager import Manager
 
 @app.route('/')
 # @login_required

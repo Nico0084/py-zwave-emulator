@@ -37,14 +37,14 @@ along with py-zwave-emulator. If not, see http:#www.gnu.org/licenses.
 import serial
 import time
 import threading
-from zwemulator.lib.defs import *
-from zwemulator.lib.log import LogLevel
+from lib.defs import *
+from lib.log import LogLevel
 
 
 PORT = "/tmp/ttyS1"
 
 class OZWSerialEmul:
-    
+
     def __init__(self, port, baud = 19200, timeout = 0,  stop = None, callback = None, setWaitingForAck = None, log =None, cbTimeOut = 0):
         self._stop = stop
         self._callback = callback
@@ -53,10 +53,10 @@ class OZWSerialEmul:
         self._cbTimeOut = cbTimeOut
         self._lockWrite = threading.Lock()  # use to lock write data on serial when waiting for an ACK
         self._log.write(LogLevel.Info, "  Opening emulate controller {0}".format(port))
-        self._serial = serial.Serial(port,  baud, timeout = timeout, rtscts=True, dsrdtr=True)
+        self._serial = serial.Serial(port, baud, timeout = timeout, rtscts=True, dsrdtr=True)
         self._readMsg = threading.Thread(None, self.waitData, "th_Handle_Read_Msg", (), {})
         self._readMsg.start()
-        
+
     def close(self):
         self._log.write(LogLevel.Info, "Closing emulate controller {0}".format(self._serial.name))
         try :
@@ -64,11 +64,11 @@ class OZWSerialEmul:
         except:
             pass
         self._serial.close()
-        
+
     def formatHex(self,  data):
         if data : return ''.join("0x%.2x, "%d for d in data[0:-1]) + "0x%.2x"%data[-1]
         return ''
-        
+
     def read(self):
         try :
             data = self._serial.read(256)
@@ -80,12 +80,12 @@ class OZWSerialEmul:
         except  serial.SerialException, e:
             print "Read error :" , e
         return None
-        
+
     def writeHex(self, data):
         s = ''
         for c in data :
             s += chr(c)
-        if data[0] == SOF : 
+        if data[0] == SOF :
             self._lockWrite.acquire()
             self._setWaitingForAck(True)
         num = self._serial.write(s)
@@ -94,7 +94,7 @@ class OZWSerialEmul:
             if data[0] == SOF : self._lockWrite.release()
         except:
             pass
-        
+
     def waitData(self):
         cbTimeOut = time.time();
         while not self._stop.isSet():
@@ -128,13 +128,13 @@ class OZWSerialEmul:
                 time.sleep(0.01)
         self.close()
         print "Terminate, serial open ? : ",  self._serial.isOpen()
-    
-        
+
+
 if __name__ == "__main__":
     import logging
-    
+
     class Log():
-        
+
         def __init__(self):
             self.log = logging.getLogger()
             self.log.setLevel(logging.DEBUG)
@@ -151,7 +151,7 @@ if __name__ == "__main__":
             for a in args :
     #                print type(a),  a.__class__.__name__
                 if a.__class__.__name__ == "Manager" : a = 'mgr'
-                elif a.__class__.__name__ == "Driver" : a = 'ctrl' 
+                elif a.__class__.__name__ == "Driver" : a = 'ctrl'
                 elif a.__class__.__name__ == "Node" : a = 'Node%0.3d'%a.nodeId
                 elif a.__class__.__name__ == "Value" : a = 'Node%0.3d'%a.nodeId
                 msg += ", {0}".format(a)
@@ -192,11 +192,11 @@ if __name__ == "__main__":
         elif data == [0x01, 0x05, 0x00, 0x06, 0x64, 0x0f, 0x97]:    # FUNC_ID_SERIAL_API_SET_TIMEOUTS
             ser.writeHex([0x06])
             ser.writeHex([0x01, 0x05, 0x01, 0x06, 0x64, 0x0f, 0x96])
-    
+
     stop = threading.Event()
     log = Log()
     ser = OZWSerialEmul(PORT, stop = stop, callback = ProcessMsg,  log = log)
-        
+
     try :
         while True :
             time.sleep(0.1)

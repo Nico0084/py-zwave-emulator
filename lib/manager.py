@@ -35,14 +35,14 @@ along with py-zwave-emulator. If not, see http:#www.gnu.org/licenses.
 
 """
 
-from zwemulator.lib.defs import *
-from zwemulator.lib.node import Node
-from zwemulator.lib.driver import Driver
-from zwemulator.lib.options import Options
-from zwemulator.lib.log import Log, LogLevel
-from zwemulator.lib.vers import ozw_vers_major, ozw_vers_minor, ozw_vers_revision
-from zwemulator.lib.xmlfiles import networkFileConfig,  DeviceClasses,  Manufacturers
-from zwemulator.lib.command_classes.commandclasses import CommandClasses
+from lib.defs import *
+from lib.node import Node
+from lib.driver import Driver
+from lib.options import Options
+from lib.log import Log, LogLevel
+from lib.vers import ozw_vers_major, ozw_vers_minor, ozw_vers_revision
+from lib.xmlfiles import networkFileConfig,  DeviceClasses,  Manufacturers
+from lib.command_classes.commandclasses import CommandClasses
 import os
 import re
 import threading

@@ -35,9 +35,9 @@ from logging.handlers import RotatingFileHandler
 import os
 import sys
 #from manager import Manager
-#from zwemulator.lib.driver import Driver
+#from lib.driver import Driver
 #from node import Node
-#from zwemulator.lib.values import Value
+#from lib.values import Value
 
 LOG = None
 
@@ -133,9 +133,9 @@ class Log(object):
             
 if __name__ == "__main__":
     from manager import Manager
-    from zwemulator.lib.driver import Driver
+    from lib.driver import Driver
     from node import Node
-    from zwemulator.lib.values import Value
+    from lib.values import Value
     from options import Options
     
     l = Log()

@@ -34,8 +34,8 @@ along with py-zwave-emulator. If not, see http:#www.gnu.org/licenses.
 
 """
 
-from zwemulator.lib.defs import *
-from zwemulator.lib.log import LogLevel
+from lib.defs import *
+from lib.log import LogLevel
 from ctrlemulator import OZWSerialEmul
 import time
 import threading

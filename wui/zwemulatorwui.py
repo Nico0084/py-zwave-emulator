@@ -4,7 +4,7 @@
 from flask import Flask
 #import sys
 #sys.path.insert(0,'..')
-#from zwemulator.lib.manager import MANAGER, OPTIONS,  Manager
+#from lib.manager import MANAGER, OPTIONS,  Manager
 app = Flask(__name__)
 app.debug = True
 app.secret_key = 'zwave-emulator-python'

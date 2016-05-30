@@ -84,8 +84,8 @@ from UserCode import UserCode
 from Version import Version
 from WakeUp import WakeUp
 
-from zwemulator.lib.log import LogLevel
-from zwemulator.lib.defs import *
+from lib.log import LogLevel
+from lib.defs import *
 
 class CommandClasses:
 

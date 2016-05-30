@@ -36,12 +36,12 @@ along with py-zwave-emulator. If not, see http:#www.gnu.org/licenses.
 """
 
 import sys
-sys.path.insert(0,'../..')
+sys.path.insert(0,'..')
 
 from threading import Thread
-from zwemulator.lib.manager import OPTIONS,  Manager
-from zwemulator.wui.zwemulatorwui import app
-from zwemulator.lib.defs import readJsonFile
+from lib.manager import OPTIONS,  Manager
+from wui.zwemulatorwui import app
+from lib.defs import readJsonFile
 import time
 
 from flask import request

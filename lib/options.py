@@ -35,8 +35,8 @@ along with python-openzwave. If not, see http://www.gnu.org/licenses.
 
 #from manager import MANAGER
 
-from zwemulator.lib.log import Log, LogLevel, LOG
-from zwemulator.lib.defs import *
+from lib.log import Log, LogLevel, LOG
+from lib.defs import *
 from xml.dom import minidom
 import json
 import os
