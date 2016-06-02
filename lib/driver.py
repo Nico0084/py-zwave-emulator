@@ -794,6 +794,9 @@ class Driver:
             elif function ==  FUNC_ID_ZW_REQUEST_NODE_NEIGHBOR_UPDATE_OPTIONS:
                 self._log.write(LogLevel.Detail, "" )
                 self.HandleNodeNeighborUpdateResponse( _data )
+            elif function ==  FUNC_ID_ZW_SET_DEFAULT:
+                self._log.write(LogLevel.Detail, "" )
+                self.HandleSerialAPIResetRequest( _data )
             else:
                 self._log.write(LogLevel.Detail, "" )
                 self._log.write(LogLevel.Info, "**TODO: handle request for 0x%.2x** Please report this message."%function)
@@ -850,9 +853,6 @@ class Driver:
                 elif function ==  FUNC_ID_PROMISCUOUS_APPLICATION_COMMAND_HANDLER:
                     self._log.write(LogLevel.Detail, "" )
                     HandlePromiscuousApplicationCommandHandlerRequest( _data )
-                elif function ==  FUNC_ID_ZW_SET_DEFAULT:
-                    self._log.write(LogLevel.Detail, "" )
-                    HandleSerialAPIResetRequest( _data )
                 else:
                     self._log.write(LogLevel.Detail, "" )
                     self._log.write(LogLevel.Info, "**TODO: handle response for 0x%.2x** Please report this message."%function )
@@ -1264,7 +1264,7 @@ class Driver:
 
     def HandleReplaceFailedNodeResponse(self, _data):
         node = self.GetNode(_data[2])
-        msg = Msg( "Z-Wave stack for FUNC_ID_ZW_REPLACE_FAILED_NODE ", _data[2],  RESPONSE, FUNC_ID_ZW_REPLACE_FAILED_NODE)
+        msg = Msg( "Z-Wave stack for FUNC_ID_ZW_REPLACE_FAILED_NODE ", _data[2], RESPONSE, FUNC_ID_ZW_REPLACE_FAILED_NODE)
         if node is not None :
             self._currentCtrlCommands[FUNC_ID_ZW_REPLACE_FAILED_NODE] = ControllerCommandItem(FUNC_ID_ZW_REPLACE_FAILED_NODE, _data[-2], node.nodeId)
             state = FAILED_NODE_REMOVE_STARTED if node.IsFailed else FAILED_NODE_REPLACE_FAILED
@@ -1279,6 +1279,19 @@ class Driver:
         else : # Handle A response fail , Seems no possible response in zwave protocol , so send fail
             msg.Append(FAILED_NODE_REMOVE_FAIL)
             self.SendMsg(msg, MsgQueue.Command, True)
+
+    def HandleSerialAPIResetRequest(self, _data):
+        from random import randrange
+        msg = Msg( "Response to FUNC_ID_ZW_SET_DEFAULT", self, REQUEST, FUNC_ID_ZW_SET_DEFAULT)
+        msg.Append(_data[2]) # Add CallbackId
+        self.SendMsg(msg, MsgQueue.NoOp)
+        newHomeId = randrange(0x00, 0xffffffff, 1)
+        for n in self._manager.getNodesOfhomeId(self.homeId) :
+            if n.nodeId != self._node.nodeId :
+                self.UnRegisterNode(n)
+        self._manager.resetZwNetwork(self.homeId, newHomeId)
+        self.homeId = newHomeId
+        self._node.homeId = newHomeId
 
     def getFirstMsg(self):
         for queue in self.msgQueues :

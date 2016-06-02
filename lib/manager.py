@@ -54,60 +54,60 @@ MANAGER = None  # A Singleton for manager
 OPTIONS = Options() # A Singleton for Options
 
 #SUPPORTEDCOMMANDCLASSES = {
-#    0x71: "COMMAND_CLASS_ALARM", 
-#    0x22: "COMMAND_CLASS_APPLICATION_STATUS", 
-#    0x85: "COMMAND_CLASS_ASSOCIATION", 
-#    0x9b: "COMMAND_CLASS_ASSOCIATION_COMMAND_CONFIGURATION", 
-#    0x20: "COMMAND_CLASS_BASIC", 
-#    0x50: "COMMAND_CLASS_BASIC_WINDOW_COVERING", 
-#    0x80: "COMMAND_CLASS_BATTERY", 
-#    0x46: "COMMAND_CLASS_CLIMATE_CONTROL_SCHEDULE", 
-#    0x81: "COMMAND_CLASS_CLOCK", 
-#    0x70: "COMMAND_CLASS_CONFIGURATION", 
-#    0x21: "COMMAND_CLASS_CONTROLLER_REPLICATION", 
-#    0x56: "COMMAND_CLASS_CRC_16_ENCAP" , 
-#    0x90: "COMMAND_CLASS_ENERGY_PRODUCTION", 
-#    0x82: "COMMAND_CLASS_HAIL", 
-#    0x87: "COMMAND_CLASS_INDICATOR", 
-#    0x89: "COMMAND_CLASS_LANGUAGE", 
-#    0x76: "COMMAND_CLASS_LOCK", 
-#    0x72: "COMMAND_CLASS_MANUFACTURER_SPECIFIC", 
-#    0x32: "COMMAND_CLASS_METER", 
-#    0x35: "COMMAND_CLASS_METER_PULSE", 
-#    0x8f: "COMMAND_CLASS_MULTI_CMD", 
-#    0x60: "COMMAND_CLASS_MULTI_INSTANCE/CHANNEL", 
-#    0x8e: "COMMAND_CLASS_MULTI_INSTANCE_ASSOCIATION", 
-#    0x77: "COMMAND_CLASS_NODE_NAMING", 
-#    0x00: "COMMAND_CLASS_NO_OPERATION", 
-#    0x73: "COMMAND_CLASS_POWERLEVEL", 
-#    0x88: "COMMAND_CLASS_PROPRIETARY", 
-#    0x75: "COMMAND_CLASS_PROTECTION", 
-#    0x2B: "COMMAND_CLASS_SCENE_ACTIVATION", 
-#    0x9c: "COMMAND_CLASS_SENSOR_ALARM", 
-#    0x30: "COMMAND_CLASS_SENSOR_BINARY", 
-#    0x31: "COMMAND_CLASS_SENSOR_MULTILEVEL", 
-#    0x27: "COMMAND_CLASS_SWITCH_ALL", 
-#    0x25: "COMMAND_CLASS_SWITCH_BINARY", 
-#    0x26: "COMMAND_CLASS_SWITCH_MULTILEVEL", 
-#    0x28: "COMMAND_CLASS_SWITCH_TOGGLE_BINARY", 
-#    0x29: "COMMAND_CLASS_SWITCH_TOGGLE_MULTILEVEL", 
-#    0x44: "COMMAND_CLASS_THERMOSTAT_FAN_MODE", 
-#    0x45: "COMMAND_CLASS_THERMOSTAT_FAN_STATE", 
-#    0x40: "COMMAND_CLASS_THERMOSTAT_MODE", 
-#    0x42: "COMMAND_CLASS_THERMOSTAT_OPERATING_STATE", 
-#    0x43: "COMMAND_CLASS_THERMOSTAT_SETPOINT", 
-#    0x63: "COMMAND_CLASS_USER_CODE", 
-#    0x86: "COMMAND_CLASS_VERSION", 
-#    0x84: "COMMAND_CLASS_WAKE_UP", 
+#    0x71: "COMMAND_CLASS_ALARM",
+#    0x22: "COMMAND_CLASS_APPLICATION_STATUS",
+#    0x85: "COMMAND_CLASS_ASSOCIATION",
+#    0x9b: "COMMAND_CLASS_ASSOCIATION_COMMAND_CONFIGURATION",
+#    0x20: "COMMAND_CLASS_BASIC",
+#    0x50: "COMMAND_CLASS_BASIC_WINDOW_COVERING",
+#    0x80: "COMMAND_CLASS_BATTERY",
+#    0x46: "COMMAND_CLASS_CLIMATE_CONTROL_SCHEDULE",
+#    0x81: "COMMAND_CLASS_CLOCK",
+#    0x70: "COMMAND_CLASS_CONFIGURATION",
+#    0x21: "COMMAND_CLASS_CONTROLLER_REPLICATION",
+#    0x56: "COMMAND_CLASS_CRC_16_ENCAP" ,
+#    0x90: "COMMAND_CLASS_ENERGY_PRODUCTION",
+#    0x82: "COMMAND_CLASS_HAIL",
+#    0x87: "COMMAND_CLASS_INDICATOR",
+#    0x89: "COMMAND_CLASS_LANGUAGE",
+#    0x76: "COMMAND_CLASS_LOCK",
+#    0x72: "COMMAND_CLASS_MANUFACTURER_SPECIFIC",
+#    0x32: "COMMAND_CLASS_METER",
+#    0x35: "COMMAND_CLASS_METER_PULSE",
+#    0x8f: "COMMAND_CLASS_MULTI_CMD",
+#    0x60: "COMMAND_CLASS_MULTI_INSTANCE/CHANNEL",
+#    0x8e: "COMMAND_CLASS_MULTI_INSTANCE_ASSOCIATION",
+#    0x77: "COMMAND_CLASS_NODE_NAMING",
+#    0x00: "COMMAND_CLASS_NO_OPERATION",
+#    0x73: "COMMAND_CLASS_POWERLEVEL",
+#    0x88: "COMMAND_CLASS_PROPRIETARY",
+#    0x75: "COMMAND_CLASS_PROTECTION",
+#    0x2B: "COMMAND_CLASS_SCENE_ACTIVATION",
+#    0x9c: "COMMAND_CLASS_SENSOR_ALARM",
+#    0x30: "COMMAND_CLASS_SENSOR_BINARY",
+#    0x31: "COMMAND_CLASS_SENSOR_MULTILEVEL",
+#    0x27: "COMMAND_CLASS_SWITCH_ALL",
+#    0x25: "COMMAND_CLASS_SWITCH_BINARY",
+#    0x26: "COMMAND_CLASS_SWITCH_MULTILEVEL",
+#    0x28: "COMMAND_CLASS_SWITCH_TOGGLE_BINARY",
+#    0x29: "COMMAND_CLASS_SWITCH_TOGGLE_MULTILEVEL",
+#    0x44: "COMMAND_CLASS_THERMOSTAT_FAN_MODE",
+#    0x45: "COMMAND_CLASS_THERMOSTAT_FAN_STATE",
+#    0x40: "COMMAND_CLASS_THERMOSTAT_MODE",
+#    0x42: "COMMAND_CLASS_THERMOSTAT_OPERATING_STATE",
+#    0x43: "COMMAND_CLASS_THERMOSTAT_SETPOINT",
+#    0x63: "COMMAND_CLASS_USER_CODE",
+#    0x86: "COMMAND_CLASS_VERSION",
+#    0x84: "COMMAND_CLASS_WAKE_UP",
 #    }
-    
+
 
 class Manager(object):
     """Manager as singleton, and singleton options link"""
-    
+
     instance = None
     initialized = False
-    
+
     def __new__(cls, *args, **kargs):
         cls._log = None
         if OPTIONS is not None and OPTIONS.AreLocked:
@@ -117,20 +117,20 @@ class Manager(object):
             else :
                 Manager.initialized = True
             cls._options = OPTIONS
-            return Manager.instance        
+            return Manager.instance
         cls._log = Log()
         cls._log.create("",  False,  True, LogLevel.Debug , LogLevel.Debug, LogLevel.Debug)
         cls._log.write(LogLevel.Error, cls, "Options have not been created and locked. Exiting...")
         exit(1)
         return None
-            
+
     def __init__(self):
         global MANAGER
         if not self.initialized :
             self._nodes = []
             self.drivers = []
             self._DeviceClass = []
-            self.zwNetworks = {}            
+            self.zwNetworks = {}
             self.paramsConfig = {}
             self._stop = threading.Event()
     #        find, configPath = self._options.GetOptionAsString( "ConfigPath")
@@ -145,7 +145,7 @@ class Manager(object):
         self.instance = None
         self.initialized = False
         self._stop.set()
-    
+
     def Create(self):
         # Create the log file (if enabled)
         find, logging = self._options.GetOptionAsBool( "Logging")
@@ -156,7 +156,7 @@ class Manager(object):
         if not find : logFileNameBase = "OZWEmule_Log.txt"
         find, bAppend = self._options.GetOptionAsBool( "AppendLogFile")
         if not find :  bAppend = False
-        find, bConsoleOutput = self._options.GetOptionAsBool( "ConsoleOutput")           
+        find, bConsoleOutput = self._options.GetOptionAsBool( "ConsoleOutput")
         if not find : bConsoleOutput = True
         find, nSaveLogLevel = self._options.GetOptionAsInt( "SaveLogLevel")
         if not find : nSaveLogLevel = LogLevel.Debug #LogLevel.Detail
@@ -182,15 +182,15 @@ class Manager(object):
         self.loadXmlConfig()
 #        Scene.ReadScenes()
         self._log.write(LogLevel.Always, self, "OpenZwave-emulator Version {0} Starting Up".format(self.getVersionAsString()))
-        for homeId in self.zwNetworks : 
+        for homeId in self.zwNetworks :
             self.startDriver(homeId)
-            
+
     def GetValAsHex(self, value, nChar = 2):
-        print 
+        print
         if type(value) != 'list' : data = [value]
         else : data =value
         return GetDataAsHex(data, nChar)
-        
+
     def checkVirtualCom(self, homeId):
         """Check if a virtual port emulator is running"""
         if 'configData' in self.zwNetworks[homeId] :
@@ -214,7 +214,7 @@ class Manager(object):
                         self._log.write(LogLevel.Warning, self, "Socat Process error : {0}".format(e))
         self._log.write(LogLevel.Always, self, "Virtual communication system not running.")
         return False
-        
+
     def startVirtualCom(self, homeId, start = False):
         if 'configData' in self.zwNetworks[homeId] and 'virtualcom' in self.zwNetworks[homeId]['configData']:
             virtualcom = self.zwNetworks[homeId]['configData']['virtualcom']
@@ -226,7 +226,7 @@ class Manager(object):
                             subprocess.Popen(['socat','-d', '-d', 'PTY,ignoreeof,echo=0,raw,link={0}'.format(virtualcom['ports']['zwavectrl']),
                                                     'PTY,ignoreeof,echo=0,raw,link={0}'.format(virtualcom['ports']['emulator'])])
                             self._stop.wait(1)
-                            if not self.checkVirtualCom(homeId) : 
+                            if not self.checkVirtualCom(homeId) :
                                 self._log.write(LogLevel.Error, self, "Error on starting Virtual communication system.")
                     else :
                         self._log.write(LogLevel.Warning, self, "Virtual communication configuration not handled : {0}".format(virtualcom))
@@ -234,16 +234,16 @@ class Manager(object):
                 self._log.write(LogLevel.Always, self, "Virtual communication system not in auto start-up.")
         else :
             self._log.write(LogLevel.Warning, self, "No configuration set for virtual communication on zwave HomeId {0}".format(homeId))
-        
+
     def getVersionAsString(self):
         return "{0}.{1}.{2}".format(ozw_vers_major, ozw_vers_minor, ozw_vers_revision)
-        
+
     def readXmlNetwork(self, fileConf):
         return networkFileConfig(fileConf)
-        
+
     def readXmlDeviceClasses(self, pathConf):
         self._DeviceClass = DeviceClasses(pathConf)
-        
+
     def loadXmlConfig(self):
         dataDir = '../data'
         files = os.listdir(dataDir)
@@ -255,13 +255,13 @@ class Manager(object):
                     xmlData = self.readXmlNetwork(dataDir + "/" + f)
                     driverData = xmlData.getDriver(0)
                     homeId = driverData['homeId']
-                    self.zwNetworks[homeId] = {'xmlData': self.readXmlNetwork(dataDir + "/" + f)}
+                    self.zwNetworks[homeId] = {'xmlData': xmlData}
                     configFile = f.replace('xml', 'json')
-                    try : 
+                    try :
                         self.zwNetworks[homeId]['configData'] = readJsonFile(dataDir + "/" +  configFile)
                         self._log.write(LogLevel.Always, self,"Config for emulation loaded : {0}".format(self.zwNetworks[homeId]['configData']))
                     except :
-                        self._log.write(LogLevel.Error, self,"Error on readind config file for emulation :{0}".format(dataDir + "/" +  configFile))                    
+                        self._log.write(LogLevel.Error, self,"Error on readind config file for emulation :{0}".format(dataDir + "/" +  configFile))
                     print driverData
                     nodes = self.zwNetworks[homeId]['xmlData'].listeNodes()
                     for node in nodes :
@@ -271,8 +271,19 @@ class Manager(object):
                     self.drivers.append(Driver(self, self.getNode(homeId, driverData['nodeId']),  driverData))
                     print " +++ driver added +++"
                 else :
-                    self._log.write(LogLevel.Warning, self,"Zwave network allready loaded :{0}".format(f))                    
-                    
+                    self._log.write(LogLevel.Warning, self,"Zwave network allready loaded :{0}".format(f))
+
+    def resetZwNetwork(self,  oldHomeId,  newHomeId):
+        ctrl = self.GetDriver(oldHomeId)
+        self.zwNetworks[newHomeId] = self.zwNetworks.pop(oldHomeId)
+        self.zwNetworks[newHomeId]['configData']['controller']['fakeneighbors'] = {}
+        nodes = []
+        for node in self.zwNetworks[newHomeId]['configData']['nodes'] :
+            if node['nodeid'] == ctrl._node.nodeId :
+                nodes = [node]
+                break
+        self.zwNetworks[newHomeId]['configData']['nodes'] = nodes
+
     def getZwVersion(self, homeId):
         if homeId :
             if 'controller' in self.zwNetworks[homeId]['configData']:
@@ -280,7 +291,7 @@ class Manager(object):
                     return self.zwNetworks[homeId]['configData']['controller']['zwversion']
             return ZWVERSION
         return ""
-    
+
     def getSerialAPIVersion(self, homeId):
         if homeId :
             if 'controller' in self.zwNetworks[homeId]['configData']:
@@ -288,7 +299,7 @@ class Manager(object):
                     return self.zwNetworks[homeId]['configData']['controller']['serialapiversion']
             return SERIALAPIVERSION
         return ""
-        
+
     def getRFChipVersion(self, homeId):
         if homeId :
             if 'controller' in self.zwNetworks[homeId]['configData']:
@@ -305,7 +316,7 @@ class Manager(object):
                         return self.zwNetworks[homeId]['configData']['controller']['fakeneighbors'][str(nodeId)]
             return []
         return []
-        
+
     def getEmulNodeData(self, homeId, nodeId):
         if homeId :
             if 'nodes' in self.zwNetworks[homeId]['configData']:
@@ -313,17 +324,17 @@ class Manager(object):
                     if 'nodeid' in n and n['nodeid'] == nodeId:
                         return n
         return { "nodeid" : nodeId,
-                     "comment" : "Auto comment", 
+                     "comment" : "Auto comment",
                      "failed" : False,
                      "timeoutwakeup" : 0,
                      "wakeupduration" : 0,
-                     "pollingvalues" : [], 
+                     "pollingvalues" : [],
                      "cmdclssextraparams" : {}
                   }
-        
+
     def matchHomeID(self, homeId):
         """Evalue si c'est bien un homeID, retourne le homeID ou None"""
-        if type(homeId) in [long,  int] : 
+        if type(homeId) in [long,  int] :
             return "0x%0.8x" %homeId
         homeIDFormat = r"^0x[0-9,a-f]{8}$"
         if re.match(homeIDFormat,  homeId.lower()) is not None :
@@ -338,23 +349,31 @@ class Manager(object):
         node = Node(self,  homeId,  nodeId, xmlNode)
         self._nodes.append(node)
         self._log.write(LogLevel.Info, self, "Node {0} on homeId {1} added from xml config file.".format(nodeId,  homeId))
-        
+
     def GetCommandClassId(self, cmdClass):
         return self.cmdClassRegistered.GetCommandClassId(cmdClass)
-        
+
     def getNode(self, homeId, nodeId):
         for n in self._nodes:
             if (n.homeId == homeId or self.matchHomeID(n.homeId) == homeId) and n.nodeId == nodeId :
                 return n
         return None
-    
+
+    def getNodesOfhomeId(self, homeId):
+        """Return all nodes from zwave network"""
+        retval = []
+        for n in self._nodes:
+            if (n.homeId == homeId or self.matchHomeID(n.homeId) == homeId) :
+                retval.append(n)
+        return retval
+
     def getListNodeId(self, homeId):
         listN = []
         for n in self._nodes:
             if n.homeId == homeId  :
                 listN.append(n.nodeId)
         return listN
-        
+
     def copyNode(self, node):
         """Copy a node object add it on manager list nodes and set it not include.
            Return the new node object.
@@ -368,7 +387,7 @@ class Manager(object):
         self._nodes.append(newNode)
         self._log.write(LogLevel.Info, self, "Manager create new node by copy node {0}.{1}.".format(node.homeId, node.nodeId))
         return newNode
-        
+
     def getFirstFreeNodeIdBeforeInclude(self):
         """"Return the fisrt nodeId free to add node in manager list """
         listId = []
@@ -379,16 +398,16 @@ class Manager(object):
             if id not in listId :
                 break
         return id
-        
+
     def includeNewNode(self, homeId, node):
         """Include a new node in zwave network"""
         ctrl = self.GetDriver(homeId)
         return ctrl.includeNode(node)
 
-    def excludeNode(self, node):
-        """Exclude a node from zwave network"""
-        ctrl = self.GetDriver(node.homeId)
-        return ctrl.excludeNode(node)
+    def resetHomeId(self, oldHomeId, newHomeId):
+        for n in self._nodes:
+            if (n.homeId == oldHomeId or self.matchHomeID(n.homeId) == oldHomeId) :
+                n.homeId = newHomeId
 
     def startDriver(self, homeId):
         if self.checkVirtualCom(homeId) :
@@ -400,22 +419,22 @@ class Manager(object):
                         self._log.write(LogLevel.Info, self, "Added driver for controller {0}".format(serialport))
                         driver.Start()
                         return True
-                    elif driver.serialport == serialport: 
+                    elif driver.serialport == serialport:
                         self._log.write(LogLevel.Warning, self, "Cannot add driver for controller {0} - driver already exists".format(serialport))
                         break
                 self._log.write(LogLevel.Warning, self, "Cannot add driver for controller {0} - no emulate driver available".format(serialport))
-            else: 
+            else:
                 self._log.write(LogLevel.Info, Warning, "Cannot add driver for controller {0} - no emulate driver loaded".format(serialport))
         return False
-    
+
     def GetDriver(self, homeId):
         for driver in self.drivers:
             if homeId == driver.homeId : return driver
         return None
-    
+
     def IsSupportedCommandClasses(self,  clsId):
         return self.cmdClassRegistered.IsSupported(clsId)
-    
+
     def SetProductDetails(self, node, manufacturerId, productType, productId):
         manufacturerName = "Unknown: id=%.4x"%manufacturerId
         productName = "Unknown: type=%.4x, id=%.4x"%(productType, productId)
@@ -441,7 +460,7 @@ class Manager(object):
         node.SetProductType("%.4x"%productType)
         node.SetProductId(  "%.4x"%productId )
         return configPath
-            
+
 """
         # // Configuration
         void WriteConfig(uint32_t homeid)
@@ -570,7 +589,7 @@ class Manager(object):
         void RemoveAssociation(uint32_t homeid, uint8_t nodeid, uint8_t groupidx, uint8_t targetnodeid)
         bool AddWatcher(pfnOnNotification_t notification, void* context)
         bool RemoveWatcher(pfnOnNotification_t notification, void* context)
-        # void NotifyWatchers(Notification*) 
+        # void NotifyWatchers(Notification*)
         # // Controller Commands
         void ResetController(uint32_t homeid)
         void SoftReset(uint32_t homeid)
@@ -612,6 +631,6 @@ class Manager(object):
         void SetSceneLabel( uint8_t sceneId, string value )
         bool SceneExists( uint8_t sceneId )
         bool ActivateScene( uint8_t sceneId )
-        
+
 """
 
