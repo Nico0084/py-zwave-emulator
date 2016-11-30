@@ -106,7 +106,8 @@ class Version(CommandClass):
                 msg.Append(clss.m_version)
                 self.GetDriver.SendMsg(msg, MsgQueue.NoOp)
             else :
-                self._log.write(LogLevel.Warning, self, "Bad commandClass id version request :0x%0x%.2x"%_data[1])
+#                self._log.write(LogLevel.Warning, self, "Bad commandClass id version request :0x%0x%.2x"%_data[1])
+                self._log.write(LogLevel.Warning, self, "Bad commandClass id version request")
 
         else:
             self._log.write(LogLevel.Warning, self, "CommandClass REQUEST {0}, Not implemented : {1}".format(self.getFullNameCmd(_data[0]), GetDataAsHex(_data)))
