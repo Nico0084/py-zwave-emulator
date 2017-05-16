@@ -1282,9 +1282,6 @@ class Driver:
 
     def HandleSerialAPIResetRequest(self, _data):
         from random import randrange
-        msg = Msg( "Response to FUNC_ID_ZW_SET_DEFAULT", self, REQUEST, FUNC_ID_ZW_SET_DEFAULT)
-        msg.Append(_data[2]) # Add CallbackId
-        self.SendMsg(msg, MsgQueue.NoOp)
         newHomeId = randrange(0x00, 0xffffffff, 1)
         for n in self._manager.getNodesOfhomeId(self.homeId) :
             if n.nodeId != self._node.nodeId :
@@ -1292,6 +1289,10 @@ class Driver:
         self._manager.resetZwNetwork(self.homeId, newHomeId)
         self.homeId = newHomeId
         self._node.homeId = newHomeId
+        msg = Msg( "Response to FUNC_ID_ZW_SET_DEFAULT", self, REQUEST, FUNC_ID_ZW_SET_DEFAULT)
+        msg.Append(_data[2]) # Add CallbackId
+        self._stop.wait(2)  # To simulate Hardware process
+        self.SendMsg(msg, MsgQueue.NoOp)
 
     def getFirstMsg(self):
         for queue in self.msgQueues :

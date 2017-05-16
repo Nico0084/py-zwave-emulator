@@ -66,6 +66,8 @@ if __name__ == '__main__':
     OPTIONS.create("../openzwave/config", "", "--logging true --LogFileName test.log")
     OPTIONS.Lock()
     manager = Manager()
+    params = sys.argv
+    outLog = True if (params != [] and params[1] == "-c") else False
     try :
         manager.paramsConfig = readJsonFile('../data/config_emulation.json')
         print "Config parameters loaded : {0}".format(manager.paramsConfig)
@@ -79,7 +81,7 @@ if __name__ == '__main__':
         port = manager.paramsConfig['webui']['port']
         wuiApp = Thread(None, joinwui, "th_wui_zwave_ctrl_emulator", (), {'manager':manager})
         wuiApp.start()
-        manager.Create()
+        manager.Create(consoleOutput = outLog)
     #    manager.Addwatcher(notif_callback, API().pyCallback)
         app.run(host=host, port=port, threaded=True, use_reloader=False)
         manager._stop.set()
