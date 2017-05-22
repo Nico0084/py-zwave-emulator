@@ -51,13 +51,13 @@ class VersionIndex:
     Application = 2
 
 class Version(CommandClass):
-    
+
     StaticGetCommandClassId = 0x86
     StaticGetCommandClassName = "COMMAND_CLASS_VERSION"
-    
+
     def __init__(self, node,  data):
         CommandClass.__init__(self, node, data)
-    
+
     GetCommandClassId = property(lambda self: self.StaticGetCommandClassId)
     GetCommandClassName = property(lambda self: self.StaticGetCommandClassName)
 
@@ -94,7 +94,6 @@ class Version(CommandClass):
             self.GetDriver.SendMsg(msg, MsgQueue.NoOp)
         elif _data[0] == VersionCmd.CommandClassGet:
             msg = Msg( "VersionCmd_CommandClass_Report", self.nodeId,  REQUEST, FUNC_ID_APPLICATION_COMMAND_HANDLER)
-            clssId = _data[1]
             clss = self._node.GetCommandClass( _data[1])
             if clss is not None :
                 msg.Append(TRANSMIT_COMPLETE_OK)
@@ -106,8 +105,6 @@ class Version(CommandClass):
                 msg.Append(clss.m_version)
                 self.GetDriver.SendMsg(msg, MsgQueue.NoOp)
             else :
-#                self._log.write(LogLevel.Warning, self, "Bad commandClass id version request :0x%0x%.2x"%_data[1])
-                self._log.write(LogLevel.Warning, self, "Bad commandClass id version request")
-
+                self._log.write(LogLevel.Warning, self, "Bad commandClass id version request : 0x%.2x"%_data[1])
         else:
             self._log.write(LogLevel.Warning, self, "CommandClass REQUEST {0}, Not implemented : {1}".format(self.getFullNameCmd(_data[0]), GetDataAsHex(_data)))

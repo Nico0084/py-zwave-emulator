@@ -1175,8 +1175,8 @@ class Driver:
                 msg.Append(ADD_NODE_STOP)
                 msg.Append(TRANSMIT_COMPLETE_OK)  #0x00
                 del self._currentCtrlCommands[FUNC_ID_ZW_ADD_NODE_TO_NETWORK]
-#            else :
-#                self._log.write(LogLevel.Warning, self, "Receive {ADD_NODE_STOP".format(getFuncName(msgParams['function']), GetDataAsHex([msgParams['function']])))
+            else :
+                self._log.write(LogLevel.Warning, self, "FUNC_ID_ZW_ADD_NODE_TO_NETWORK not handle by controler.")
         else :
             #OPTION_HIGH_POWER			=	0x80    # High power controller for inclusion/exclusion
             #OPTION_NWI				=		0x40	# NWI Inclusion
@@ -1212,8 +1212,8 @@ class Driver:
                 msg.Append(0x00) # TODO: Must check if a node has been removing and insert it in case
                 msg.Append(TRANSMIT_COMPLETE_OK)  #0x00
                 del self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK]
-#            else :
-#                self._log.write(LogLevel.Warning, self, "Receive {ADD_NODE_STOP".format(getFuncName(msgParams['function']), GetDataAsHex([msgParams['function']])))
+            else :
+                self._log.write(LogLevel.Warning, self, "FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK not handle by controler.")
         else :
             #OPTION_HIGH_POWER			=	0x80    # High power controller for inclusion/exclusion
             self._currentCtrlCommands[FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK] = ControllerCommandItem(FUNC_ID_ZW_REMOVE_NODE_FROM_NETWORK, _data[-2])
