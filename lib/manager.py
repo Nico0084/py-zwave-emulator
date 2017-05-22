@@ -146,7 +146,7 @@ class Manager(object):
         self.initialized = False
         self._stop.set()
 
-    def Create(self):
+    def Create(self, consoleOutput = True ):
         # Create the log file (if enabled)
         find, logging = self._options.GetOptionAsBool( "Logging")
         if not find : logging = False
@@ -158,6 +158,7 @@ class Manager(object):
         if not find :  bAppend = False
         find, bConsoleOutput = self._options.GetOptionAsBool( "ConsoleOutput")
         if not find : bConsoleOutput = True
+        bConsoleOutput = consoleOutput
         find, nSaveLogLevel = self._options.GetOptionAsInt( "SaveLogLevel")
         if not find : nSaveLogLevel = LogLevel.Debug #LogLevel.Detail
         find, nQueueLogLevel = self._options.GetOptionAsInt( "QueueLogLevel")
