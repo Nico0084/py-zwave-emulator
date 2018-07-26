@@ -67,7 +67,9 @@ if __name__ == '__main__':
     OPTIONS.Lock()
     manager = Manager()
     params = sys.argv
-    outLog = True if (params != [] and params[1] == "-c") else False
+    outLog = False
+    for p in params:
+        if  p == "-c" : outLog = True
     try :
         manager.paramsConfig = readJsonFile('../data/config_emulation.json')
         print "Config parameters loaded : {0}".format(manager.paramsConfig)
